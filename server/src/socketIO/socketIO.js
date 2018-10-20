@@ -12,10 +12,11 @@ const ON_EVENTS = {
     joinRoom: 'joinRoom',
     gatheringScores: 'gatheringScores',
     gameQuit: 'gameComplete',
-    readyToPlay: 'readyToPlay',
+    startGame: 'startGame',
     setLocalizationData: 'recieveLocalizationData',
-    requestLocalizationData: 'requestLocalizationData',
-    receiveData: 'recieveData'
+    broadcastLocalizationData: 'broadcastLocalizationData',
+    receiveData: 'recieveData',
+    leaveRoom: 'leaveRoom'
 }
 
 const EMIT_EVENTS = {
@@ -31,7 +32,7 @@ const EMIT_EVENTS = {
 }
 
 
-function setUpGameRoom(io, key) {
+function setUpGameRoom(io, key, socket) {
     const room = io.sockets.in(key);
 
     rooms[key] = {
@@ -39,19 +40,39 @@ function setUpGameRoom(io, key) {
         state: "CREATED"
     };
 
-    room.on(ON_EVENTS.setLocalizationData, function (data) {
+
+
+    socket.on(ON_EVENTS.leaveRoom, function (userStr) {
+        console.log('Leave room', userStr);
+        const user = JSON.parse(userStr);
+        const key = user.currentRoomKey;
+        room.emit(EMIT_EVENTS.memberDropped, user);
+        removeUserFromRoom(key, user.uid);
+        socket.leave(key);
+    });
+
+
+    socket.on(ON_EVENTS.broadcastLocalizationData, function (dataStr) {
+        const data = JSON.parse(dataStr);
+
+        room.emit(EMIT_EVENTS.dispactchLocalizationData, data);
+    });
+
+    socket.on(ON_EVENTS.setLocalizationData, function (dataStr) {
+        const data = JSON.parse(dataStr);
         console.log("Localization Data: ", data);
         rooms[key].localizationData = data;
         room.emit(EMIT_EVENTS.dispactchLocalizationData, data);
     });
 
-    room.on(ON_EVENTS.receiveData, function (data) {
+    socket.on(ON_EVENTS.receiveData, function (dataStr) {
+        const data = JSON.parse(dataStr);
         console.log("Recieved data: ", data);
         rooms[key].data = data;
         room.emit(EMIT_EVENTS.sendData, data);
     });
 
-    room.on(ON_EVENTS.readyToPlay, function () {
+    socket.on(ON_EVENTS.startGame, function () {
         rooms[key].state = "GAME STARTED";
 
         room.emit(EMIT_EVENTS.gameStarted);
@@ -64,7 +85,8 @@ function setUpGameRoom(io, key) {
 
             const collectedScores = [];
 
-            room.on(ON_EVENTS.gatheringScores, function (data) {
+            room.on(ON_EVENTS.gatheringScores, function (dataStr) {
+                const data = JSON.parse(dataStr);
                 const score = data.score;
                 const userName = data.userName;
                 const uid = data.uid;
@@ -96,7 +118,8 @@ function setUpGameRoom(io, key) {
 
     });
 
-    room.on(ON_EVENTS.gameQuit, function (payload) {
+    room.on(ON_EVENTS.gameQuit, function (dataStr) {
+        const data = JSON.parse(dataStr);
 
         rooms[key].state = "GAME QUIT";
 
@@ -124,7 +147,15 @@ function trackUsersPerRoom(key, user) {
     } else {
         rooms[key].users = [user]
     }
+}
 
+function removeUserFromRoom(key, uid) {
+    const users = rooms[key].users;
+    if (users && users.length) {
+        rooms[key].users = users.filter(item => item.uid !== uid);
+    } else {
+        console.log("no user to remove");
+    }
 }
 
 
@@ -137,24 +168,19 @@ const setUpSocketIO = function (server) {
 
     io.on('connection', function (socket) {
 
-        socket.on(ON_EVENTS.createRoom, function () {
+        socket.on(ON_EVENTS.createRoom, function (userDataStr) {
+            const userData = JSON.parse(userDataStr);
             const key = randomKey.get();
             console.log('Room being created with key: ', key);
-            setUpGameRoom(io, key);
-            joinLogic(socket, key, {}, io);
+            setUpGameRoom(io, key, socket);
+            userData.currentRoomKey = key;
+            joinLogic(socket, userData, io);
         });
 
-        socket.on(ON_EVENTS.joinRoom, function (key) {
-            const trimedKey = key.trim();
-            joinLogic(socket, trimedKey, {}, io);
+        socket.on(ON_EVENTS.joinRoom, function (userDataStr) {
+            const userData = JSON.parse(userDataStr);
+            joinLogic(socket, userData, io);
         });
-
-        socket.on(ON_EVENTS.requestLocalizationData, function (key) {
-            socket.emit(EMIT_EVENTS.dispactchLocalizationData, rooms[key].localizationData);
-        });
-
-
-
 
 
         console.log('user connected', socket.id);
@@ -164,7 +190,8 @@ const setUpSocketIO = function (server) {
 
 }
 
-function joinLogic(socket, key, userData, io) {
+function joinLogic(socket, userData, io) {
+    const key = userData.currentRoomKey;
     console.log('Joining room with key: ', key);
     socket.join(key);
 
@@ -180,6 +207,7 @@ function joinLogic(socket, key, userData, io) {
 
     socket.on('disconnect', () => {
         io.sockets.in(key).emit(EMIT_EVENTS.memberDropped, userData);
+        removeUserFromRoom(key, userData)
     });
 
 }
