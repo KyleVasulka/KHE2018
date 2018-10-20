@@ -48,11 +48,16 @@ function emptyRoom(key) {
 }
 
 function trackUsersPerRoom(key, user) {
+    if(!rooms[key].users){
+        rooms[key].users = {}
+    }
     rooms[key].users[user.uid] = user;
 }
 
 function removeUserFromRoom(key, uid) {
-    delete rooms[key].users[user.uid];
+    if(rooms[key].users){
+        delete rooms[key].users[user.uid];
+    }
 }
 
 function emitter(key) {
