@@ -118,11 +118,11 @@ function emptyRoom(io, key) {
 }
 
 function trackUsersPerRoom(key, user) {
-    const users = rooms[trimedKey].users;
+    const users = rooms[key].users;
     if (users && users.length) {
         users.push(user);
     } else {
-        rooms[trimedKey].users = [user]
+        rooms[key].users = [user]
     }
 
 }
@@ -165,17 +165,17 @@ const setUpSocketIO = function (server) {
 }
 
 function joinLogic(socket, key, userData, io) {
-    console.log('Joining room with key: ', trimedKey);
-    socket.join(trimedKey);
+    console.log('Joining room with key: ', key);
+    socket.join(key);
 
     const localizationData = rooms[key].localizationData;
-    const payload = { key: trimedKey };
+    const payload = { key: key };
     if (localizationData) {
         payload.localizationData = localizationData;
     }
     socket.emit(EMIT_EVENTS.joinedRoom, payload);
 
-    trackUsersPerRoom(trimedKey, userData);
+    trackUsersPerRoom(key, userData);
     io.sockets.in(key).emit(EMIT_EVENTS.newMemberJoined, userData);
 
     socket.on('disconnect', () => {
