@@ -12,7 +12,9 @@ const ON_EVENTS = {
     joinRoom: 'joinRoom',
     gatheringScores: 'gatheringScores',
     gameQuit: 'gameComplete',
-    startGame: 'startGame'
+    readyToPlay: 'readyToPlay',
+    setLocalizationData: 'recieveLocalizationData',
+    requestLocalizationData: 'requestLocalizationData'
 }
 
 const EMIT_EVENTS = {
@@ -20,10 +22,11 @@ const EMIT_EVENTS = {
     gameStarted: 'gameStarted',
     finalScores: 'finalScores',
     timeLeft: 'timeLeft',
-    gameOver: 'gameOver'
+    gameOver: 'gameOver',
+    dispactchLocalizationData: 'dispactchLocalizationData',
+    newMemberJoined: 'newMemberJoined'
+
 }
-
-
 
 
 function setUpGameRoom(io, key) {
@@ -34,7 +37,13 @@ function setUpGameRoom(io, key) {
         state: "CREATED"
     };
 
-    room.on(ON_EVENTS.startGame, function () {
+    room.on(ON_EVENTS.setLocalizationData, function (data) {
+        console.log("Localization Data: ", data);
+        rooms[key].localizationData = data;
+        room.emit(EMIT_EVENTS.dispactchLocalizationData, data);
+    });
+
+    room.on(ON_EVENTS.readyToPlay, function () {
         rooms[key].state = "GAME STARTED";
 
         room.emit(EMIT_EVENTS.gameStarted);
@@ -60,7 +69,7 @@ function setUpGameRoom(io, key) {
 
             room.emit(EMIT_EVENTS.gameOver);
 
-            countDownInterval.countDown(5, (timeLeft) => {
+            countDownInterval.countDown(5, () => {
             }, () => {
                 room.emit(EMIT_EVENTS.finalScores, collectedScores);
                 emptyRoom(io, key);
@@ -72,7 +81,6 @@ function setUpGameRoom(io, key) {
                 }
 
                 delete rooms[key];
-
             })
 
         })
@@ -101,9 +109,18 @@ function emptyRoom(io, key) {
     });
 }
 
+function trackUsersPerRoom(key, user) {
+    const users = rooms[trimedKey].users;
+    if (users && users.length) {
+        users.push(user);
+    } else {
+        rooms[trimedKey].users = [user]
+    }
+
+}
+
+
 const setUpSocketIO = function (server) {
-
-
     let io = Server(server, { pingInterval: 500 });
 
     io.on('connect_error', function (err) {
@@ -115,29 +132,48 @@ const setUpSocketIO = function (server) {
         socket.on(ON_EVENTS.createRoom, function () {
             const key = randomKey.get();
             console.log('Room being created with key: ', key);
-            socket.join(key);
-            socket.emit(EMIT_EVENTS.joinedRoom, { key: key });
             setUpGameRoom(io, key);
+            joinLogic(key, {});
         });
 
         socket.on(ON_EVENTS.joinRoom, function (key) {
             const trimedKey = key.trim();
-            console.log('Joining room with key: ', trimedKey);
-            socket.join(trimedKey);
-            socket.emit(EMIT_EVENTS.joinedRoom, { key: trimedKey });
+            joinLogic(trimedKey, {});
         });
+
+        socket.on(ON_EVENTS.requestLocalizationData, function (key) {
+            socket.emit(EMIT_EVENTS.dispactchLocalizationData, rooms[key].localizationData);
+        });
+
+
 
         socket.on('disconnect', function () {
             socket.emit('disconnected');
             console.log("connected socket", JSON.stringify(socket.id));
         });
 
-        console.log('user connected')
+        console.log('user connected', socket.id);
     });
 
     return io;
 
 }
+
+function joinLogic(key, userData, io) {
+    console.log('Joining room with key: ', trimedKey);
+    socket.join(trimedKey);
+
+    const localizationData = rooms[key].localizationData;
+    const payload = { key: trimedKey };
+    if (localizationData) {
+        payload.localizationData = localizationData;
+    }
+    socket.emit(EMIT_EVENTS.joinedRoom, payload);
+
+    trackUsersPerRoom(trimedKey, userData);
+    io.sockets.in(key).emit(EMIT_EVENTS.newMemberJoined, userData);
+}
+
 module.exports = {
     setup: setUpSocketIO,
     activeRooms: () => rooms,
