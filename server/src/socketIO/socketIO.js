@@ -13,7 +13,7 @@ const ON_EVENTS = {
     createRoom: 'createRoom',
     joinRoom: 'joinRoom',
     gatheringScores: 'gatheringScores',
-    endGame: 'endGame',
+    stopGame: 'stopGame',
     startGame: 'startGame',
     setLocalizationData: 'recieveLocalizationData',
     broadcastLocalizationData: 'broadcastLocalizationData',
@@ -88,12 +88,12 @@ function setupChannels(socket) {
     socket.on(ON_EVENTS.leaveRoom, (data) => {
         const userData = JSON.parse(data);
         const key = userData.roomKey;
-        console.log('Leave room', userStr);
+        console.log('Leave room', userData);
         emitter(key).emit(EMIT_EVENTS.memberDropped, userData);
         removeUserFromRoom(key, userData.uid);
     })
 
-    socket.on(ON_EVENTS.endGame, (data) => {
+    socket.on(ON_EVENTS.stopGame, (data) => {
         const userData = JSON.parse(data);
         const key = userData.roomKey;
 
@@ -133,17 +133,7 @@ function setupChannels(socket) {
         const data = JSON.parse(dataStr);
         const key = data.roomKey;
         const uid = data.uid;
-
         globalScoreTracker[key][uid] = data;
-
-        // const score = data.score;
-        // const userName = data.userName;
-        // const uid = data.uid;
-        // collectedScores.push({
-        //     score: score,
-        //     userName: userName,
-        //     uid: uid
-        // });
     })
 
     socket.on(ON_EVENTS.startGame, (dataStr) => {
