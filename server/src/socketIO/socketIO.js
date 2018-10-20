@@ -87,7 +87,7 @@ const setUpSocketIO = function (server) {
             const key = randomKey.get();
             console.log('Room being created with key: ', key);
             socket.join(key);
-            socket.emit(ON_EVENTS.roomJoined, { key: key });
+            socket.emit(EMIT_EVENTS.joinedRoom, { key: key });
             setUpGameRoom(io, key);
         });
 
@@ -95,7 +95,12 @@ const setUpSocketIO = function (server) {
             const trimedKey = key.trim();
             console.log('Joining room with key: ', trimedKey);
             socket.join(trimedKey);
-            socket.emit(EMIT_EVENTS.roomJoined, { key: trimedKey });
+            socket.emit(EMIT_EVENTS.joinedRoom, { key: trimedKey });
+        });
+
+        socket.on('disconnect', function () {
+            socket.emit('disconnected');
+
         });
 
         console.log('user connected')
