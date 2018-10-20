@@ -42,7 +42,7 @@ function setUpGameRoom(io, key, socket) {
 
 
 
-    socket.on(ON_EVENTS.leaveRoom, function (userStr) {
+    socket.on(ON_EVENTS.leaveRoom, (userStr) => {
         console.log('Leave room', userStr);
         const user = JSON.parse(userStr);
         const key = user.currentRoomKey;
@@ -52,27 +52,27 @@ function setUpGameRoom(io, key, socket) {
     });
 
 
-    socket.on(ON_EVENTS.broadcastLocalizationData, function (dataStr) {
+    socket.on(ON_EVENTS.broadcastLocalizationData, (dataStr) => {
         const data = JSON.parse(dataStr);
 
         room.emit(EMIT_EVENTS.dispactchLocalizationData, data);
     });
 
-    socket.on(ON_EVENTS.setLocalizationData, function (dataStr) {
+    socket.on(ON_EVENTS.setLocalizationData, (dataStr) => {
         const data = JSON.parse(dataStr);
         console.log("Localization Data: ", data);
         rooms[key].localizationData = data;
         room.emit(EMIT_EVENTS.dispactchLocalizationData, data);
     });
 
-    socket.on(ON_EVENTS.receiveData, function (dataStr) {
+    socket.on(ON_EVENTS.receiveData, (dataStr) => {
         const data = JSON.parse(dataStr);
         console.log("Recieved data: ", data);
         rooms[key].data = data;
         room.emit(EMIT_EVENTS.sendData, data);
     });
 
-    socket.on(ON_EVENTS.startGame, function () {
+    socket.on(ON_EVENTS.startGame,  () => {
         rooms[key].state = "GAME STARTED";
 
         room.emit(EMIT_EVENTS.gameStarted);
@@ -85,7 +85,7 @@ function setUpGameRoom(io, key, socket) {
 
             const collectedScores = [];
 
-            room.on(ON_EVENTS.gatheringScores, function (dataStr) {
+            room.on(ON_EVENTS.gatheringScores,  (dataStr) => {
                 const data = JSON.parse(dataStr);
                 const score = data.score;
                 const userName = data.userName;
@@ -118,7 +118,7 @@ function setUpGameRoom(io, key, socket) {
 
     });
 
-    room.on(ON_EVENTS.gameQuit, function (dataStr) {
+    room.on(ON_EVENTS.gameQuit, (dataStr) => {
         const data = JSON.parse(dataStr);
 
         rooms[key].state = "GAME QUIT";
@@ -135,7 +135,7 @@ function setUpGameRoom(io, key, socket) {
 }
 
 function emptyRoom(io, key) {
-    io.sockets.clients(key).forEach(function (s) {
+    io.sockets.clients(key).forEach((s) => {
         s.leave(key);
     });
 }
@@ -159,16 +159,16 @@ function removeUserFromRoom(key, uid) {
 }
 
 
-const setUpSocketIO = function (server) {
+const setUpSocketIO =  (server) => {
     let io = Server(server, { pingInterval: 500 });
 
-    io.on('connect_error', function (err) {
+    io.on('connect_error',  (err) =>{
         console.log('Error connecting to server');
     });
 
-    io.on('connection', function (socket) {
+    io.on('connection', (socket) => {
 
-        socket.on(ON_EVENTS.createRoom, function (userDataStr) {
+        socket.on(ON_EVENTS.createRoom, (userDataStr) => {
             const userData = JSON.parse(userDataStr);
             const key = randomKey.get();
             console.log('Room being created with key: ', key);
@@ -177,7 +177,7 @@ const setUpSocketIO = function (server) {
             joinLogic(socket, userData, io);
         });
 
-        socket.on(ON_EVENTS.joinRoom, function (userDataStr) {
+        socket.on(ON_EVENTS.joinRoom, (userDataStr) => {
             const userData = JSON.parse(userDataStr);
             joinLogic(socket, userData, io);
         });
