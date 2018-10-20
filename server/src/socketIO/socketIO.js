@@ -91,6 +91,7 @@ function setupChannels(socket) {
         console.log('Leave room', userData);
         emitter(key).emit(EMIT_EVENTS.memberDropped, userData);
         removeUserFromRoom(key, userData.uid);
+        socket.leave(key);
     })
 
     socket.on(ON_EVENTS.stopGame, (data) => {
