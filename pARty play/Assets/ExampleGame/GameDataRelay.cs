@@ -85,7 +85,7 @@ public class GameDataRelay : MonoBehaviour
     {
         user.currentRoomKey = inputRoom.text;
         // Join specified room id
-        relay.Emit("joinRoom", user);
+        relay.Emit("joinRoom", user.asJson());
         Debug.Log(inputRoom.text);
         // dataEntry.text = "Room joined";
     }
