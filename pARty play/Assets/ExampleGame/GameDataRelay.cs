@@ -56,8 +56,8 @@ public class GameDataRelay : MonoBehaviour
     {
         Debug.Log("Set up client	");
 
-        // relay = IO.Socket("ws://party-play.herokuapp.com/");
-        relay = IO.Socket("ws://localhost:8080/");
+        relay = IO.Socket("ws://party-play.herokuapp.com/");
+        // relay = IO.Socket("ws://localhost:8080/");
 
         Debug.Log(relay);
 
