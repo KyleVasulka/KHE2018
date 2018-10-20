@@ -1,5 +1,7 @@
 
-const PORT = 8080;
+const PORT=process.env.PORT || 8080;
+
+
 const http = require('http');
 const bodyParser = require('body-parser');
 const cors = require('cors');

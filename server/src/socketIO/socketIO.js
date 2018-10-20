@@ -13,8 +13,8 @@ const EMIT_EVENTS = {
     joinRoom: 'joinRoom',
     waitingRoomTimer: 'waitingRoomTimer',
     startGame: 'startGame',
-    collectScores: 'collectScores',
-    collectingScores: 'collectingScores',
+    // collectScores: 'collectScores',
+    // collectingScores: 'collectingScores',
     finalScores: 'finalScores',
     timeLeft: 'timeLeft',
     gameOver: 'gameOver'
@@ -44,10 +44,7 @@ function setUpGameRoom(io, key) {
         countDownInterval(6, (secondsLeft) => {
             room.emit(EMIT_EVENTS.timeLeft, secondsLeft);
         }, () => {
-
-
-            room.emit(EMIT_EVENTS.gameOver);
-
+            
             const collectedScores = [];
 
             room.on(ON_EVENTS.gatheringScores, function (data) {
@@ -61,10 +58,14 @@ function setUpGameRoom(io, key) {
                 });
             })
 
-            room.emit(EMIT_EVENTS.collectScores);
+            room.emit(EMIT_EVENTS.gameOver);
+
+
+
+            // room.emit(EMIT_EVENTS.collectScores);
 
             countDownInterval(5, (timeLeft) => {
-                room.emit(EMIT_EVENTS.collectingScores);
+                // room.emit(EMIT_EVENTS.collectingScores);
             }, () => {
                 // room.off(ON_EVENTS.gatheringScores);
                 room.emit(EMIT_EVENTS.finalScores, collectedScores);
