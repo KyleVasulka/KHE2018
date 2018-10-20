@@ -5,6 +5,7 @@ using UnityEngine.UI;
 using UnityEngine.Networking;
 using Quobject.SocketIoClientDotNet.Client;
 using Newtonsoft.Json;
+using GoogleARCore.CrossPlatform;
 
 [System.Serializable]
 public class RoomKey
