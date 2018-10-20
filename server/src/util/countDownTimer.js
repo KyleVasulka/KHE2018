@@ -1,6 +1,6 @@
 
 module.exports = {
-    countDown = (seconds, body, end) => {
+    countDown: (seconds, body, end) => {
         let i = seconds;
         const interval = setInterval(function () {
             body(i);
