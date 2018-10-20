@@ -140,8 +140,12 @@ public class GameSequence
         relay.Emit("setLocalizationData", user.asJson());
     }
 
-    public void setupListeners()
-    {
+    public void setupListeners() {
+        // Invalid key specified..
+        relay.On("invalidKey", (data) => {
+        	Debug.Log(data);
+		});
+
         // When anyone joins the room output room Id
         relay.On("joinedRoom", (data) =>
         {
