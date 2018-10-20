@@ -6,18 +6,20 @@ const rooms = {};
 const deadRooms = {};
 let io;
 let app;
+let globalScoreTracker = {};
 
 
 const ON_EVENTS = {
     createRoom: 'createRoom',
     joinRoom: 'joinRoom',
     gatheringScores: 'gatheringScores',
-    gameQuit: 'gameComplete',
+    endGame: 'endGame',
     startGame: 'startGame',
     setLocalizationData: 'recieveLocalizationData',
     broadcastLocalizationData: 'broadcastLocalizationData',
     receiveData: 'recieveData',
-    leaveRoom: 'leaveRoom'
+    leaveRoom: 'leaveRoom',
+    broadcastData: 'broadcastData'
 }
 
 const EMIT_EVENTS = {
@@ -26,93 +28,12 @@ const EMIT_EVENTS = {
     finalScores: 'finalScores',
     timeLeft: 'timeLeft',
     gameOver: 'gameOver',
-    dispactchLocalizationData: 'dispactchLocalizationData',
+    broadcastLocalizationData: 'broadcastLocalizationData',
     newMemberJoined: 'newMemberJoined',
     memberDropped: 'memberDropped',
-    sendData: 'sendData'
+    broadcastData: 'broadcastData'
 }
 
-function setUpListeners(socket) {
-
-}
-
-
-function setUpGameRoom(io, key, socket) {
-    // rooms[key] = {
-    //     created: Date.now(),
-    //     state: "CREATED",
-    //     emitter: io.sockets.in(key)
-    // };
-
-
-
-    socket.on(ON_EVENTS.broadcastLocalizationData, (dataStr) => {
-        const data = JSON.parse(dataStr);
-
-        room.emit(EMIT_EVENTS.dispactchLocalizationData, data);
-    });
-
-    socket.on(ON_EVENTS.setLocalizationData, (dataStr) => {
-        const data = JSON.parse(dataStr);
-        console.log("Localization Data: ", data);
-        rooms[key].localizationData = data;
-        room.emit(EMIT_EVENTS.dispactchLocalizationData, data);
-    });
-
-    socket.on(ON_EVENTS.receiveData, (dataStr) => {
-        const data = JSON.parse(dataStr);
-        console.log("Recieved data: ", data);
-        rooms[key].data = data;
-        room.emit(EMIT_EVENTS.sendData, data);
-    });
-
-    socket.on(ON_EVENTS.startGame, () => {
-        rooms[key].state = "GAME STARTED";
-
-        room.emit(EMIT_EVENTS.gameStarted);
-
-        countDownInterval.countDown(60, (secondsLeft) => {
-            room.emit(EMIT_EVENTS.timeLeft, secondsLeft);
-            rooms[key].timeLeft = secondsLeft;
-
-        }, () => {
-
-            const collectedScores = [];
-
-            room.on(ON_EVENTS.gatheringScores, (dataStr) => {
-                const data = JSON.parse(dataStr);
-                const score = data.score;
-                const userName = data.userName;
-                const uid = data.uid;
-                collectedScores.push({
-                    score: score,
-                    userName: userName,
-                    uid: uid
-                });
-            })
-
-            room.emit(EMIT_EVENTS.gameOver);
-
-            countDownInterval.countDown(5, () => {
-            }, () => {
-                room.emit(EMIT_EVENTS.finalScores, collectedScores);
-                emptyRoom(io, key);
-                rooms[key].state = "GAME ENDED";
-
-                deadRooms[key] = {
-                    collectedScores: collectedScores,
-                    ...rooms[key]
-                }
-
-                delete rooms[key];
-            })
-
-        })
-
-
-    });
-
-}
 
 function emptyRoom(key) {
     io.sockets.clients(key).forEach((s) => {
@@ -144,43 +65,27 @@ function emitter(key) {
 }
 
 
-function setupEnpoints(socket) {
+function setupChannels(socket) {
 
-    /**
-     * 
-     *     ******createRoom: 'createRoom',
-    joinRoom: 'joinRoom',
-    gatheringScores: 'gatheringScores',
-    gameQuit: 'gameComplete',
-    startGame: 'startGame',
-    setLocalizationData: 'recieveLocalizationData',
-    broadcastLocalizationData: 'broadcastLocalizationData',
-    receiveData: 'recieveData',
-    leaveRoom: ************ 'leaveRoom'
-     * 
-     */
-
-    socket.on('createRoom', (data) => {
-        console.log(data);
+    socket.on(ON_EVENTS.createRoom, (data) => {
         const userData = JSON.parse(data);
         const key = randomKey.get();
         console.log('Room being created with key: ', key);
-
-
         rooms[key] = {
             created: Date.now(),
             state: "CREATED",
             emitter: io.sockets.in(key)
         };
-
-
-        // setUpGameRoom(io, key, socket);
         userData.roomKey = key;
-        // res.json({ key: key });
         joinLogic(socket, userData);
     })
 
-    socket.on('/leaveRoom', (data) => {
+    socket.on(ON_EVENTS.joinRoom, (userDataStr) => {
+        const userData = JSON.parse(userDataStr);
+        joinLogic(socket, userData);
+    });
+
+    socket.on(ON_EVENTS.leaveRoom, (data) => {
         const userData = JSON.parse(data);
         const key = userData.roomKey;
         console.log('Leave room', userStr);
@@ -188,7 +93,7 @@ function setupEnpoints(socket) {
         removeUserFromRoom(key, userData.uid);
     })
 
-    socket.on('/endGame', (data) => {
+    socket.on(ON_EVENTS.endGame, (data) => {
         const userData = JSON.parse(data);
         const key = userData.roomKey;
 
@@ -205,13 +110,43 @@ function setupEnpoints(socket) {
     });
 
 
-    socket.on('/broadcastData', (dataStr) => {
+    socket.on(ON_EVENTS.broadcastLocalizationData, (dataStr) => {
         const data = JSON.parse(dataStr);
-        const key = data.roomKey;
-        emitter(key).emit(EMIT_EVENTS.sendData, data);
+
+        room.emit(EMIT_EVENTS.broadcastLocalizationData, data);
     });
 
-    socket.on('/startGame', (dataStr) => {
+    socket.on(ON_EVENTS.setLocalizationData, (dataStr) => {
+        const data = JSON.parse(dataStr);
+        console.log("Localization Data: ", data);
+        rooms[key].localizationData = data;
+        room.emit(EMIT_EVENTS.broadcastLocalizationData, data);
+    });
+
+    socket.on(ON_EVENTS.broadcastData, (dataStr) => {
+        const data = JSON.parse(dataStr);
+        const key = data.roomKey;
+        emitter(key).emit(EMIT_EVENTS.broadcastData, data);
+    });
+
+    socket.on(ON_EVENTS.gatheringScores, (dataStr) => {
+        const data = JSON.parse(dataStr);
+        const key = data.roomKey;
+        const uid = data.uid;
+
+        globalScoreTracker[key][uid] = data;
+
+        // const score = data.score;
+        // const userName = data.userName;
+        // const uid = data.uid;
+        // collectedScores.push({
+        //     score: score,
+        //     userName: userName,
+        //     uid: uid
+        // });
+    })
+
+    socket.on(ON_EVENTS.startGame, (dataStr) => {
         const data = JSON.parse(dataStr);
         const key = data.roomKey;
 
@@ -225,35 +160,22 @@ function setupEnpoints(socket) {
 
         }, () => {
             console.log('all done!')
-            // const collectedScores = [];
 
-            // room.on(ON_EVENTS.gatheringScores, (dataStr) => {
-            //     const data = JSON.parse(dataStr);
-            //     const score = data.score;
-            //     const userName = data.userName;
-            //     const uid = data.uid;
-            //     collectedScores.push({
-            //         score: score,
-            //         userName: userName,
-            //         uid: uid
-            //     });
-            // })
+            room.emit(EMIT_EVENTS.gameOver);
 
-            // room.emit(EMIT_EVENTS.gameOver);
+            countDownInterval.countDown(5, () => {
+            }, () => {
+                room.emit(EMIT_EVENTS.finalScores, globalScoreTracker[key]);
+                emptyRoom(io, key);
+                rooms[key].state = "GAME ENDED";
 
-            // countDownInterval.countDown(5, () => {
-            // }, () => {
-            //     room.emit(EMIT_EVENTS.finalScores, collectedScores);
-            //     emptyRoom(io, key);
-            //     rooms[key].state = "GAME ENDED";
+                deadRooms[key] = {
+                    collectedScores: collectedScores,
+                    ...rooms[key]
+                }
 
-            //     deadRooms[key] = {
-            //         collectedScores: collectedScores,
-            //         ...rooms[key]
-            //     }
-
-            //     delete rooms[key];
-            // })
+                delete rooms[key];
+            })
 
         })
 
@@ -275,15 +197,7 @@ const setUpSocketIO = (server, appParam) => {
     });
 
     io.on('connection', (socket) => {
-
-        socket.on(ON_EVENTS.joinRoom, (userDataStr) => {
-            const userData = JSON.parse(userDataStr);
-            joinLogic(socket, userData);
-        });
-
-        setupEnpoints(socket);
-
-
+        setupChannels(socket);
         console.log('user connected', socket.id);
     });
 
