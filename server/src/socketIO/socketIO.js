@@ -7,14 +7,12 @@ const ON_EVENTS = {
     joinRoom: 'joinRoom',
     gatheringScores: 'gatheringScores',
     gameQuit: 'gameComplete',
+    startGame: 'startGame'
 }
 
 const EMIT_EVENTS = {
     joinRoom: 'joinRoom',
-    waitingRoomTimer: 'waitingRoomTimer',
-    startGame: 'startGame',
-    // collectScores: 'collectScores',
-    // collectingScores: 'collectingScores',
+    gameStarted: 'gameStarted',
     finalScores: 'finalScores',
     timeLeft: 'timeLeft',
     gameOver: 'gameOver'
@@ -36,15 +34,14 @@ function countDownInterval(seconds, body, end) {
 function setUpGameRoom(io, key) {
     const room = io.sockets.in(key);
 
-    const waitingRoomInterval = countDownInterval(3, (secondsLeft) => {
-        room.emit(EMIT_EVENTS.waitingRoomTimer, secondsLeft);
-    }, () => {
-        room.emit(EMIT_EVENTS.startGame);
+    room.on(ON_EVENTS.startGame, function () {
 
-        countDownInterval(6, (secondsLeft) => {
+        room.emit(EMIT_EVENTS.gameStarted);
+
+        countDownInterval(60, (secondsLeft) => {
             room.emit(EMIT_EVENTS.timeLeft, secondsLeft);
         }, () => {
-            
+
             const collectedScores = [];
 
             room.on(ON_EVENTS.gatheringScores, function (data) {
@@ -60,27 +57,18 @@ function setUpGameRoom(io, key) {
 
             room.emit(EMIT_EVENTS.gameOver);
 
-
-
-            // room.emit(EMIT_EVENTS.collectScores);
-
             countDownInterval(5, (timeLeft) => {
-                // room.emit(EMIT_EVENTS.collectingScores);
             }, () => {
-                // room.off(ON_EVENTS.gatheringScores);
                 room.emit(EMIT_EVENTS.finalScores, collectedScores);
             })
 
         })
 
-    })
 
-
-
+    });
 
     room.on(ON_EVENTS.gameQuit, function (payload) {
         console.log('game bad');
-        clearInterval(waitingRoomInterval);
     })
 }
 
@@ -98,14 +86,10 @@ const setUpSocketIO = function (server) {
         socket.on(ON_EVENTS.createRoom, function () {
             const key = randomKey.get();
             console.log('Room being created with key: ', key);
-
             socket.join(key);
             socket.emit(ON_EVENTS.roomJoined, { key: key });
             setUpGameRoom(io, key);
-
-
         });
-        
 
         socket.on(ON_EVENTS.joinRoom, function (key) {
             const trimedKey = key.trim();
