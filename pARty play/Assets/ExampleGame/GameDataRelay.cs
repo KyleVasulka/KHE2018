@@ -135,7 +135,7 @@ public class GameSequence
         relay.Emit("requestLocalizationData", user.asJson());
     }
 
-    public void setLocalizationData(User user)
+    public void setLocalizationData()
     {
         relay.Emit("setLocalizationData", user.asJson());
     }
@@ -176,14 +176,13 @@ public class GameSequence
 
          });
 
-
         relay.On("broadcastLocalizationData", (data) =>
                {
                    AnchorPayload anchorPayload = JsonUtility.FromJson<AnchorPayload>(data.ToString());
-                   if (!user.achor)
-                   {
-                       user.achor = anchorPayload;
-                   }
+                      if (user.achor == null)
+                      {
+                          user.achor = anchorPayload;
+                      }
 
                });
 
@@ -268,7 +267,7 @@ public class GameDataRelay : MonoBehaviour
 
     public void setLocalizationData()
     {
-        seq.setLocalizationData(user);
+        seq.setLocalizationData();
     }
 
 }
