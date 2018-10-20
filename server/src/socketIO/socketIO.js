@@ -19,7 +19,10 @@ const ON_EVENTS = {
     broadcastLocalizationData: 'broadcastLocalizationData',
     receiveData: 'recieveData',
     leaveRoom: 'leaveRoom',
-    broadcastData: 'broadcastData'
+    broadcastData: 'broadcastData',
+    userReady: 'userReady',
+    requestLocalizationData: 'requestLocalizationData'
+
 }
 
 const EMIT_EVENTS = {
@@ -32,7 +35,8 @@ const EMIT_EVENTS = {
     newMemberJoined: 'newMemberJoined',
     memberDropped: 'memberDropped',
     broadcastData: 'broadcastData',
-    invalidKey: 'invalidKey'
+    invalidKey: 'invalidKey',
+    usersStatusChange: 'usersStatusChange'
 }
 
 
@@ -44,21 +48,11 @@ function emptyRoom(key) {
 }
 
 function trackUsersPerRoom(key, user) {
-    const users = rooms[key].users;
-    if (users && users.length) {
-        users.push(user);
-    } else {
-        rooms[key].users = [user]
-    }
+    rooms[key].users[user.uid] = user;
 }
 
 function removeUserFromRoom(key, uid) {
-    const users = rooms[key].users;
-    if (users && users.length) {
-        rooms[key].users = users.filter(item => item.uid !== uid);
-    } else {
-        console.log("no user to remove");
-    }
+    delete rooms[key].users[user.uid];
 }
 
 function emitter(key) {
@@ -85,7 +79,13 @@ function setupChannels(socket) {
         const userData = JSON.parse(userDataStr);
         joinLogic(socket, userData);
     });
+    socket.on(ON_EVENTS.userReady, (userDataStr) => {
+        const userData = JSON.parse(userDataStr);
+        rooms[key].users[userData.uid].ready = true;
+        emitter(key).emit(EMIT_EVENTS.usersStatusChange, rooms[key].users);
+    });
 
+    
     socket.on(ON_EVENTS.leaveRoom, (data) => {
         const userData = JSON.parse(data);
         const key = userData.roomKey;
@@ -119,15 +119,23 @@ function setupChannels(socket) {
 
     socket.on(ON_EVENTS.broadcastLocalizationData, (dataStr) => {
         const data = JSON.parse(dataStr);
-
-        room.emit(EMIT_EVENTS.broadcastLocalizationData, data);
+        const key = data.roomKey;
+        emitter(key).emit(EMIT_EVENTS.broadcastLocalizationData, data.achor);
     });
+
+    socket.on(ON_EVENTS.requestLocalizationData, (dataStr) => {
+        const data = JSON.parse(dataStr);
+        const key = data.roomKey;
+        emitter(key).emit(EMIT_EVENTS.broadcastLocalizationData, rooms[key].localizationData);
+    });
+    
 
     socket.on(ON_EVENTS.setLocalizationData, (dataStr) => {
         const data = JSON.parse(dataStr);
-        console.log("Localization Data: ", data);
-        rooms[key].localizationData = data;
-        room.emit(EMIT_EVENTS.broadcastLocalizationData, data);
+        const key = data.roomKey;
+        console.log("Localization User Data: ", data);
+        rooms[key].localizationData = data.achor;
+        emitter(key).emit(EMIT_EVENTS.broadcastLocalizationData, data.achor);
     });
 
     socket.on(ON_EVENTS.broadcastData, (dataStr) => {

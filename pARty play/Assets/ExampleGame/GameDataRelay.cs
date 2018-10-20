@@ -7,10 +7,17 @@ using Quobject.SocketIoClientDotNet.Client;
 using Newtonsoft.Json;
 using GoogleARCore.CrossPlatform;
 
-[System.Serializable]
-public class RoomKey
+
+public class BaseDataBroadcast
 {
-    public string key;
+    public string type;
+}
+
+[System.Serializable]
+public class JoinedRoomResult
+{
+    public string roomKey;
+    public AnchorPayload localizationData;
 }
 
 public class User
@@ -36,36 +43,41 @@ public class User
 
 }
 
-public class AnchorPayload {
-	public XPAnchor physicalAnchor;
-	public int roomNumber;
-	public string ipAddress;
+public class AnchorPayload
+{
+    public XPAnchor physicalAnchor;
+    public int roomNumber;
+    public string ipAddress;
 
-	public string asJson() {
-		return JsonUtility.ToJson(this);
-	}
+    public string asJson()
+    {
+        return JsonUtility.ToJson(this);
+    }
 }
 
 
 // TODO: timeLeft and payload for each emit event.
 // should update accordingly. the game sequence should always have a value.
-public class GameSequence {
-	public User user;
-	public string joinedRoom;
-	public Socket relay;	
-	public int timeLeft = 60;
-	public bool isHost = false;
+public class GameSequence
+{
+    public User user;
+    public string joinedRoom;
+    public Socket relay;
+    public int timeLeft = 60;
+    public bool isHost = false;
     public InputField inputRoom;
 
-	private readonly string wsEndpoint = "ws://party-play.herokuapp.com/";
+    private readonly string wsEndpoint = "ws://party-play.herokuapp.com/";
 
-	public GameSequence(User usr, InputField fld) {
-		user = usr;
-		inputRoom = fld;
-		SetupClient();
-	}
+    public GameSequence(User usr, InputField fld)
+    {
+        user = usr;
+        inputRoom = fld;
+        SetupClient();
+    }
 
-    public void SetupClient() {
+    public void SetupClient()
+    {
 
         // relay = IO.Socket("ws://party-play.herokuapp.com/");
         relay = IO.Socket(this.wsEndpoint);
@@ -77,9 +89,10 @@ public class GameSequence {
     }
 
     // host creates a room
-    public void hostCreatesARoom() {
+    public void hostCreatesARoom()
+    {
         isHost = true;
-		relay.Emit("createRoom", user.asJson());
+        relay.Emit("createRoom", user.asJson());
     }
 
     public void joinRoom()
@@ -94,8 +107,10 @@ public class GameSequence {
         relay.Emit("leaveRoom", user.asJson());
     }
 
-    public void broadcastLocalization() {
-    	relay.Emit("broadcastLocalizationData", user.achor.asJson());
+    public void broadcastLocalization()
+    {
+        // Possibly pass user to param
+        relay.Emit("broadcastLocalizationData", user);
     }
 
 
@@ -105,23 +120,35 @@ public class GameSequence {
         relay.Emit("startGame", user.asJson());
     }
 
-    public void broadcastData() {
-    	relay.Emit("broadcastData", user.asJson());
+    public void broadcastData<T>(T obj) where T : BaseDataBroadcast
+    {
+        relay.Emit("broadcastData", JsonUtility.ToJson(obj));
     }
 
-    public void stopGame() {
-    	relay.Emit("stopGame", user.asJson());
+    public void stopGame()
+    {
+        relay.Emit("stopGame", user.asJson());
     }
 
-    public void setupListeners() {
-		// When anyone joins the room output room Id
+    public void requestLocalizationData()
+    {
+        relay.Emit("requestLocalizationData", user.asJson());
+    }
+
+    public void setLocalizationData(User user)
+    {
+        relay.Emit("setLocalizationData", user.asJson());
+    }
+
+    public void setupListeners()
+    {
+        // When anyone joins the room output room Id
         relay.On("joinedRoom", (data) =>
         {
             string str = data.ToString();
-            RoomKey id = JsonUtility.FromJson<RoomKey>(str);
-            user.roomKey = id.key;
-            // Debug.Log(id.key);
-            // Debug.Log(user.uid);
+            JoinedRoomResult joinResult = JsonUtility.FromJson<JoinedRoomResult>(str);
+            user.roomKey = joinResult.roomKey;
+            user.achor = joinResult.localizationData;
         });
 
         // This is emmited from the channel of the room
@@ -148,6 +175,31 @@ public class GameSequence {
              Debug.Log(deadUser.uid);
 
          });
+
+
+        relay.On("broadcastLocalizationData", (data) =>
+               {
+                   AnchorPayload anchorPayload = JsonUtility.FromJson<AnchorPayload>(data.ToString());
+                   if (!user.achor)
+                   {
+                       user.achor = anchorPayload;
+                   }
+
+               });
+
+
+        relay.On("broadcastData", (data) =>
+               {
+                   BaseDataBroadcast payload = JsonUtility.FromJson<BaseDataBroadcast>(data.ToString());
+
+                   switch (payload.type)
+                   {
+                       case "something":
+                           break;
+                   }
+               });
+
+
     }
 
 
@@ -163,8 +215,8 @@ public class GameUI
 
 public class GameDataRelay : MonoBehaviour
 {
-	// private readonly string httpEndpoint = "https://party-play.herokuapp.com/";
-	// private readonly string wsEndpoint = "ws://party-play.herokuapp.com/";
+    // private readonly string httpEndpoint = "https://party-play.herokuapp.com/";
+    // private readonly string wsEndpoint = "ws://party-play.herokuapp.com/";
     public Text dataEntry;
     public Text txtRoom;
     public GameSequence seq;
@@ -180,32 +232,43 @@ public class GameDataRelay : MonoBehaviour
 
     void Start()
     {
-    	seq.setupListeners();
+        seq.setupListeners();
     }
 
     // ui update loop
-    void Update() {
+    void Update()
+    {
 
     }
 
-    public void createRoom() {
-    	seq.hostCreatesARoom();
+    public void createRoom()
+    {
+        seq.hostCreatesARoom();
     }
 
-    public void leaveRoom() {
-    	seq.drop();
+    public void leaveRoom()
+    {
+        seq.drop();
     }
 
-    public void joinRoom() {
-    	seq.joinRoom();
+    public void joinRoom()
+    {
+        seq.joinRoom();
     }
 
-    public void endGame() {
-    	seq.stopGame();
+    public void endGame()
+    {
+        seq.stopGame();
     }
 
-    public void sendLocalizationData() {
+    public void requestLocalizationData()
+    {
+        seq.requestLocalizationData();
+    }
 
+    public void setLocalizationData()
+    {
+        seq.setLocalizationData(user);
     }
 
 }
