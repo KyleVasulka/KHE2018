@@ -14,7 +14,8 @@ const ON_EVENTS = {
     gameQuit: 'gameComplete',
     readyToPlay: 'readyToPlay',
     setLocalizationData: 'recieveLocalizationData',
-    requestLocalizationData: 'requestLocalizationData'
+    requestLocalizationData: 'requestLocalizationData',
+    receiveData: 'recieveData'
 }
 
 const EMIT_EVENTS = {
@@ -24,8 +25,8 @@ const EMIT_EVENTS = {
     timeLeft: 'timeLeft',
     gameOver: 'gameOver',
     dispactchLocalizationData: 'dispactchLocalizationData',
-    newMemberJoined: 'newMemberJoined'
-
+    newMemberJoined: 'newMemberJoined',
+    sendData: 'sendData'
 }
 
 
@@ -41,6 +42,12 @@ function setUpGameRoom(io, key) {
         console.log("Localization Data: ", data);
         rooms[key].localizationData = data;
         room.emit(EMIT_EVENTS.dispactchLocalizationData, data);
+    });
+
+    room.on(ON_EVENTS.receiveData, function (data) {
+        console.log("Recieved data: ", data);
+        rooms[key].data = data;
+        room.emit(EMIT_EVENTS.sendData, data);
     });
 
     room.on(ON_EVENTS.readyToPlay, function () {
