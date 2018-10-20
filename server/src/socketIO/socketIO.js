@@ -223,7 +223,7 @@ function joinLogic(socket, userData) {
         socket.join(key);
 
         const localizationData = rooms[key].localizationData;
-        const payload = { key: key };
+        const payload = { roomKey: key };
         if (localizationData) {
             payload.localizationData = localizationData;
         }
