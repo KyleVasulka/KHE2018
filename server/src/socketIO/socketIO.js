@@ -129,7 +129,7 @@ const setUpSocketIO = function (server) {
 
         socket.on('disconnect', function () {
             socket.emit('disconnected');
-
+            console.log("connected socket", JSON.stringify(socket.id));
         });
 
         console.log('user connected')
