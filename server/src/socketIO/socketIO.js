@@ -26,6 +26,7 @@ const EMIT_EVENTS = {
     gameOver: 'gameOver',
     dispactchLocalizationData: 'dispactchLocalizationData',
     newMemberJoined: 'newMemberJoined',
+    memberDropped: 'memberDropped',
     sendData: 'sendData'
 }
 
@@ -140,12 +141,12 @@ const setUpSocketIO = function (server) {
             const key = randomKey.get();
             console.log('Room being created with key: ', key);
             setUpGameRoom(io, key);
-            joinLogic(key, {});
+            joinLogic(socket, key, {}, io);
         });
 
         socket.on(ON_EVENTS.joinRoom, function (key) {
             const trimedKey = key.trim();
-            joinLogic(trimedKey, {});
+            joinLogic(socket, trimedKey, {}, io);
         });
 
         socket.on(ON_EVENTS.requestLocalizationData, function (key) {
@@ -154,10 +155,7 @@ const setUpSocketIO = function (server) {
 
 
 
-        socket.on('disconnect', function () {
-            socket.emit('disconnected');
-            console.log("connected socket", JSON.stringify(socket.id));
-        });
+
 
         console.log('user connected', socket.id);
     });
@@ -166,7 +164,7 @@ const setUpSocketIO = function (server) {
 
 }
 
-function joinLogic(key, userData, io) {
+function joinLogic(socket, key, userData, io) {
     console.log('Joining room with key: ', trimedKey);
     socket.join(trimedKey);
 
@@ -179,6 +177,11 @@ function joinLogic(key, userData, io) {
 
     trackUsersPerRoom(trimedKey, userData);
     io.sockets.in(key).emit(EMIT_EVENTS.newMemberJoined, userData);
+
+    socket.on('disconnect', () => {
+        io.sockets.in(key).emit(EMIT_EVENTS.memberDropped, userData);
+    });
+
 }
 
 module.exports = {
