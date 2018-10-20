@@ -2,9 +2,10 @@ const Server = require('socket.io');
 const randomKey = require('../util/randomKey.js');
 const countDownInterval = require('../util/countDownTimer.js');
 
-
 const rooms = {};
 const deadRooms = {};
+let io;
+let app;
 
 
 const ON_EVENTS = {
@@ -31,25 +32,18 @@ const EMIT_EVENTS = {
     sendData: 'sendData'
 }
 
+function setUpListeners(socket) {
+
+}
+
 
 function setUpGameRoom(io, key, socket) {
-    const room = io.sockets.in(key);
+    // rooms[key] = {
+    //     created: Date.now(),
+    //     state: "CREATED",
+    //     emitter: io.sockets.in(key)
+    // };
 
-    rooms[key] = {
-        created: Date.now(),
-        state: "CREATED"
-    };
-
-
-
-    socket.on(ON_EVENTS.leaveRoom, (userStr) => {
-        console.log('Leave room', userStr);
-        const user = JSON.parse(userStr);
-        const key = user.currentRoomKey;
-        room.emit(EMIT_EVENTS.memberDropped, user);
-        removeUserFromRoom(key, user.uid);
-        socket.leave(key);
-    });
 
 
     socket.on(ON_EVENTS.broadcastLocalizationData, (dataStr) => {
@@ -72,7 +66,7 @@ function setUpGameRoom(io, key, socket) {
         room.emit(EMIT_EVENTS.sendData, data);
     });
 
-    socket.on(ON_EVENTS.startGame,  () => {
+    socket.on(ON_EVENTS.startGame, () => {
         rooms[key].state = "GAME STARTED";
 
         room.emit(EMIT_EVENTS.gameStarted);
@@ -85,7 +79,7 @@ function setUpGameRoom(io, key, socket) {
 
             const collectedScores = [];
 
-            room.on(ON_EVENTS.gatheringScores,  (dataStr) => {
+            room.on(ON_EVENTS.gatheringScores, (dataStr) => {
                 const data = JSON.parse(dataStr);
                 const score = data.score;
                 const userName = data.userName;
@@ -118,24 +112,11 @@ function setUpGameRoom(io, key, socket) {
 
     });
 
-    room.on(ON_EVENTS.gameQuit, (dataStr) => {
-        const data = JSON.parse(dataStr);
-
-        rooms[key].state = "GAME QUIT";
-
-        deadRooms[key] = {
-            ...rooms[key]
-        }
-
-        delete rooms[key];
-
-        console.log('Game Quit');
-        emptyRoom(io, key);
-    })
 }
 
-function emptyRoom(io, key) {
+function emptyRoom(key) {
     io.sockets.clients(key).forEach((s) => {
+        console.log(s);
         s.leave(key);
     });
 }
@@ -158,29 +139,149 @@ function removeUserFromRoom(key, uid) {
     }
 }
 
+function emitter(key) {
+    return rooms[key].emitter;
+}
 
-const setUpSocketIO =  (server) => {
-    let io = Server(server, { pingInterval: 500 });
 
-    io.on('connect_error',  (err) =>{
+function setupEnpoints(socket) {
+
+    /**
+     * 
+     *     ******createRoom: 'createRoom',
+    joinRoom: 'joinRoom',
+    gatheringScores: 'gatheringScores',
+    gameQuit: 'gameComplete',
+    startGame: 'startGame',
+    setLocalizationData: 'recieveLocalizationData',
+    broadcastLocalizationData: 'broadcastLocalizationData',
+    receiveData: 'recieveData',
+    leaveRoom: ************ 'leaveRoom'
+     * 
+     */
+
+    socket.on('createRoom', (data) => {
+        console.log(data);
+        const userData = JSON.parse(data);
+        const key = randomKey.get();
+        console.log('Room being created with key: ', key);
+
+
+        rooms[key] = {
+            created: Date.now(),
+            state: "CREATED",
+            emitter: io.sockets.in(key)
+        };
+
+
+        // setUpGameRoom(io, key, socket);
+        userData.roomKey = key;
+        // res.json({ key: key });
+        joinLogic(socket, userData);
+    })
+
+    socket.on('/leaveRoom', (data) => {
+        const userData = JSON.parse(data);
+        const key = userData.roomKey;
+        console.log('Leave room', userStr);
+        emitter(key).emit(EMIT_EVENTS.memberDropped, userData);
+        removeUserFromRoom(key, userData.uid);
+    })
+
+    socket.on('/endGame', (data) => {
+        const userData = JSON.parse(data);
+        const key = userData.roomKey;
+
+        rooms[key].state = "GAME QUIT";
+
+        deadRooms[key] = {
+            ...rooms[key]
+        }
+
+        delete rooms[key];
+
+        console.log('Game Quit');
+        emptyRoom(key);
+    });
+
+
+    socket.on('/broadcastData', (dataStr) => {
+        const data = JSON.parse(dataStr);
+        const key = data.roomKey;
+        emitter(key).emit(EMIT_EVENTS.sendData, data);
+    });
+
+    socket.on('/startGame', (dataStr) => {
+        const data = JSON.parse(dataStr);
+        const key = data.roomKey;
+
+        rooms[key].state = "GAME STARTED";
+
+        emitter(key).emit(EMIT_EVENTS.gameStarted);
+
+        countDownInterval.countDown(60, (secondsLeft) => {
+            emitter(key).emit(EMIT_EVENTS.timeLeft, secondsLeft);
+            rooms[key].timeLeft = secondsLeft;
+
+        }, () => {
+            console.log('all done!')
+            // const collectedScores = [];
+
+            // room.on(ON_EVENTS.gatheringScores, (dataStr) => {
+            //     const data = JSON.parse(dataStr);
+            //     const score = data.score;
+            //     const userName = data.userName;
+            //     const uid = data.uid;
+            //     collectedScores.push({
+            //         score: score,
+            //         userName: userName,
+            //         uid: uid
+            //     });
+            // })
+
+            // room.emit(EMIT_EVENTS.gameOver);
+
+            // countDownInterval.countDown(5, () => {
+            // }, () => {
+            //     room.emit(EMIT_EVENTS.finalScores, collectedScores);
+            //     emptyRoom(io, key);
+            //     rooms[key].state = "GAME ENDED";
+
+            //     deadRooms[key] = {
+            //         collectedScores: collectedScores,
+            //         ...rooms[key]
+            //     }
+
+            //     delete rooms[key];
+            // })
+
+        })
+
+
+    });
+
+
+
+
+}
+
+
+const setUpSocketIO = (server, appParam) => {
+    app = appParam;
+    io = Server(server, { pingInterval: 500 });
+
+    io.on('connect_error', (err) => {
         console.log('Error connecting to server');
     });
 
     io.on('connection', (socket) => {
 
-        socket.on(ON_EVENTS.createRoom, (userDataStr) => {
-            const userData = JSON.parse(userDataStr);
-            const key = randomKey.get();
-            console.log('Room being created with key: ', key);
-            setUpGameRoom(io, key, socket);
-            userData.currentRoomKey = key;
-            joinLogic(socket, userData, io);
-        });
-
         socket.on(ON_EVENTS.joinRoom, (userDataStr) => {
             const userData = JSON.parse(userDataStr);
-            joinLogic(socket, userData, io);
+            joinLogic(socket, userData);
         });
+
+        setupEnpoints(socket);
 
 
         console.log('user connected', socket.id);
@@ -190,8 +291,8 @@ const setUpSocketIO =  (server) => {
 
 }
 
-function joinLogic(socket, userData, io) {
-    const key = userData.currentRoomKey;
+function joinLogic(socket, userData) {
+    const key = userData.roomKey;
     console.log('Joining room with key: ', key);
     socket.join(key);
 
@@ -200,20 +301,22 @@ function joinLogic(socket, userData, io) {
     if (localizationData) {
         payload.localizationData = localizationData;
     }
-    socket.emit(EMIT_EVENTS.joinedRoom, payload);
+    emitter(key).emit(EMIT_EVENTS.joinedRoom, payload);
 
     trackUsersPerRoom(key, userData);
-    io.sockets.in(key).emit(EMIT_EVENTS.newMemberJoined, userData);
+    emitter(key).emit(EMIT_EVENTS.newMemberJoined, userData);
 
     socket.on('disconnect', () => {
-        io.sockets.in(key).emit(EMIT_EVENTS.memberDropped, userData);
+        emitter(key).emit(EMIT_EVENTS.memberDropped, userData);
         removeUserFromRoom(key, userData)
     });
 
 }
 
 module.exports = {
-    setup: setUpSocketIO,
+    setup: (server, appParam) => {
+        setUpSocketIO(server, appParam);
+    },
     activeRooms: () => rooms,
     deadRooms: () => deadRooms
 }

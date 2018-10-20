@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Networking;
 using Quobject.SocketIoClientDotNet.Client;
 using Newtonsoft.Json;
 
@@ -16,14 +17,14 @@ public class User
     public string uid;
     public bool isHost;
     public string name;
-    public string currentRoomKey;
+    public string roomKey;
 
     public User()
     {
         uid = System.Guid.NewGuid().ToString();
         isHost = false;
         name = "Unset";
-        currentRoomKey = "";
+        roomKey = "";
     }
 
 
@@ -44,6 +45,11 @@ public class GameUI
 
 public class GameDataRelay : MonoBehaviour
 {
+	private readonly string httpEndpoint = "http://localhost:8080/";
+	// private readonly string httpEndpoint = "https://party-play.herokuapp.com/";
+	private readonly string wsEndpoint = "ws://localhost:8080/";
+	// private readonly string wsEndpoint = "ws://party-play.herokuapp.com/";
+
     public string joinedRoom = "";
     public Socket relay;
     public bool isHost = false;
@@ -54,10 +60,10 @@ public class GameDataRelay : MonoBehaviour
 
     void SetupClient()
     {
-        Debug.Log("Set up client	");
+        Debug.Log("Set up cliet");
 
-        relay = IO.Socket("ws://party-play.herokuapp.com/");
-        // relay = IO.Socket("ws://localhost:8080/");
+        // relay = IO.Socket("ws://party-play.herokuapp.com/");
+        relay = IO.Socket(this.wsEndpoint);
 
         Debug.Log(relay);
 
@@ -65,6 +71,9 @@ public class GameDataRelay : MonoBehaviour
         {
             Debug.Log("Connected to middleman");
         });
+
+	
+
     }
 
     void Awake()
@@ -78,12 +87,13 @@ public class GameDataRelay : MonoBehaviour
     {
         Debug.Log("Create Room");
         isHost = true;
-        relay.Emit("createRoom", user.asJson());
+		//StartCoroutine(CreateRoom());
+     relay.Emit("createRoom", user.asJson());
     }
 
     public void joinRoom()
     {
-        user.currentRoomKey = inputRoom.text;
+        user.roomKey = inputRoom.text;
         // Join specified room id
         relay.Emit("joinRoom", user.asJson());
         Debug.Log(inputRoom.text);
@@ -103,7 +113,7 @@ public class GameDataRelay : MonoBehaviour
         {
             string str = data.ToString();
             RoomKey id = JsonUtility.FromJson<RoomKey>(str);
-            user.currentRoomKey = id.key;
+            user.roomKey = id.key;
             Debug.Log(id.key);
             Debug.Log(user.uid);
         });
@@ -138,6 +148,30 @@ public class GameDataRelay : MonoBehaviour
     public void BtnOnClick()
     {//button was click, send our id
         relay.Emit(joinedRoom, "ID was clicked");
+    }
+
+
+	IEnumerator CreateRoom() {
+		Debug.Log(user.uid);
+        // UnityWebRequest uwr = UnityWebRequest.Post(httpEndpoint + "createRoom", user.ToString());
+    var request = new UnityWebRequest(httpEndpoint + "createRoom", "POST");
+
+    byte[] bodyRaw = new System.Text.UTF8Encoding().GetBytes(user.ToString());
+    request.uploadHandler = (UploadHandler) new UploadHandlerRaw(bodyRaw);
+    request.downloadHandler = (DownloadHandler) new DownloadHandlerBuffer();
+    request.SetRequestHeader("Content-Type", "application/json");
+
+		// uwr.SetRequestHeader("Content-Type", "application/json");
+
+    yield return request.SendWebRequest();
+ 
+        if(request.isNetworkError || request.isHttpError) {
+            Debug.Log(request.error);
+        }
+        else {
+            // Show results as text
+            Debug.Log(request.downloadHandler.text);
+        }
     }
 
 }

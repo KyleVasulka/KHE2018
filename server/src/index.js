@@ -20,7 +20,7 @@ app.get('/', function (req, res) {
     res.send('Hello Server');
 })
 
-socketIO.setup(server);
+socketIO.setup(server, app);
 
 app.get('/activeRooms', function (req, res) {
     res.send(socketIO.activeRooms());
