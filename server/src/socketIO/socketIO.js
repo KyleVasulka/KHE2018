@@ -3,6 +3,10 @@ const randomKey = require('../util/randomKey.js');
 const countDownInterval = require('../util/countDownTimer.js');
 
 
+const rooms = {};
+const deadRooms = {};
+
+
 const ON_EVENTS = {
     createRoom: 'createRoom',
     joinRoom: 'joinRoom',
@@ -25,13 +29,20 @@ const EMIT_EVENTS = {
 function setUpGameRoom(io, key) {
     const room = io.sockets.in(key);
 
+    rooms[key] = {
+        created: Date.now(),
+        state: "CREATED"
+    };
 
     room.on(ON_EVENTS.startGame, function () {
+        rooms[key].state = "GAME STARTED";
 
         room.emit(EMIT_EVENTS.gameStarted);
 
         countDownInterval.countDown(60, (secondsLeft) => {
             room.emit(EMIT_EVENTS.timeLeft, secondsLeft);
+            rooms[key].timeLeft = secondsLeft;
+
         }, () => {
 
             const collectedScores = [];
@@ -53,6 +64,15 @@ function setUpGameRoom(io, key) {
             }, () => {
                 room.emit(EMIT_EVENTS.finalScores, collectedScores);
                 emptyRoom(io, key);
+                rooms[key].state = "GAME ENDED";
+
+                deadRooms[key] = {
+                    collectedScores: collectedScores,
+                    ...rooms[key]
+                }
+
+                delete rooms[key];
+
             })
 
         })
@@ -61,7 +81,16 @@ function setUpGameRoom(io, key) {
     });
 
     room.on(ON_EVENTS.gameQuit, function (payload) {
-        console.log('game bad');
+
+        rooms[key].state = "GAME QUIT";
+
+        deadRooms[key] = {
+            ...rooms[key]
+        }
+
+        delete rooms[key];
+
+        console.log('Game Quit');
         emptyRoom(io, key);
     })
 }
@@ -110,5 +139,7 @@ const setUpSocketIO = function (server) {
 
 }
 module.exports = {
-    setup: setUpSocketIO
+    setup: setUpSocketIO,
+    activeRooms: () => rooms,
+    deadRooms: () => deadRooms
 }
