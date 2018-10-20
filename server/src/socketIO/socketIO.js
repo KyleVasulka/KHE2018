@@ -31,7 +31,8 @@ const EMIT_EVENTS = {
     broadcastLocalizationData: 'broadcastLocalizationData',
     newMemberJoined: 'newMemberJoined',
     memberDropped: 'memberDropped',
-    broadcastData: 'broadcastData'
+    broadcastData: 'broadcastData',
+    invalidKey: 'invalidKey'
 }
 
 
@@ -89,9 +90,14 @@ function setupChannels(socket) {
         const userData = JSON.parse(data);
         const key = userData.roomKey;
         console.log('Leave room', userData);
-        emitter(key).emit(EMIT_EVENTS.memberDropped, userData);
-        removeUserFromRoom(key, userData.uid);
-        socket.leave(key);
+        if (userData.isHost) {
+            emptyRoom(key);
+        } else {
+            emitter(key).emit(EMIT_EVENTS.memberDropped, userData);
+            removeUserFromRoom(key, userData.uid);
+            socket.leave(key);
+        }
+
     })
 
     socket.on(ON_EVENTS.stopGame, (data) => {
@@ -198,23 +204,30 @@ const setUpSocketIO = (server, appParam) => {
 
 function joinLogic(socket, userData) {
     const key = userData.roomKey;
-    console.log('Joining room with key: ', key);
-    socket.join(key);
 
-    const localizationData = rooms[key].localizationData;
-    const payload = { key: key };
-    if (localizationData) {
-        payload.localizationData = localizationData;
+    if (rooms.hasOwnProperty(key)) {
+        console.log('Joining room with key: ', key);
+        socket.join(key);
+
+        const localizationData = rooms[key].localizationData;
+        const payload = { key: key };
+        if (localizationData) {
+            payload.localizationData = localizationData;
+        }
+        emitter(key).emit(EMIT_EVENTS.joinedRoom, payload);
+
+        trackUsersPerRoom(key, userData);
+        emitter(key).emit(EMIT_EVENTS.newMemberJoined, userData);
+
+        socket.on('disconnect', () => {
+            emitter(key).emit(EMIT_EVENTS.memberDropped, userData);
+            removeUserFromRoom(key, userData)
+        });
+
+    } else {
+        socket.emit(EMIT_EVENTS.invalidKey, "Invalid room key");
     }
-    emitter(key).emit(EMIT_EVENTS.joinedRoom, payload);
 
-    trackUsersPerRoom(key, userData);
-    emitter(key).emit(EMIT_EVENTS.newMemberJoined, userData);
-
-    socket.on('disconnect', () => {
-        emitter(key).emit(EMIT_EVENTS.memberDropped, userData);
-        removeUserFromRoom(key, userData)
-    });
 
 }
 
