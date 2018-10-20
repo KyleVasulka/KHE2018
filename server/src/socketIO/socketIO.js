@@ -56,7 +56,7 @@ function trackUsersPerRoom(key, user) {
 
 function removeUserFromRoom(key, uid) {
     if(rooms[key].users){
-        delete rooms[key].users[user.uid];
+        delete rooms[key].users[uid];
     }
 }
 
@@ -234,7 +234,7 @@ function joinLogic(socket, userData) {
 
         socket.on('disconnect', () => {
             emitter(key).emit(EMIT_EVENTS.memberDropped, userData);
-            removeUserFromRoom(key, userData)
+            removeUserFromRoom(key, userData.uid)
         });
 
     } else {
