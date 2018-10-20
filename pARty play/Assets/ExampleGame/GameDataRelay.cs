@@ -35,87 +35,78 @@ public class User
 
 }
 
-// potentially derivable UI abstraction.
-//  need to use for main thread UI updates.
-// NOTE: for UI updates, and an example on the socket client,
-// see: https://github.com/floatinghotpot/socket.io-unity/blob/master/Demo/SocketIOScript.cs
-public class GameUI
-{
-}
-
-public class GameDataRelay : MonoBehaviour
-{
-	private readonly string httpEndpoint = "http://localhost:8080/";
-	// private readonly string httpEndpoint = "https://party-play.herokuapp.com/";
-	private readonly string wsEndpoint = "ws://localhost:8080/";
-	// private readonly string wsEndpoint = "ws://party-play.herokuapp.com/";
-
-    public string joinedRoom = "";
-    public Socket relay;
-    public bool isHost = false;
-    public Text dataEntry;
-    public Text txtRoom;
+public class GameSequence {
+	public User user;
+	public string joinedRoom;
+	public Socket relay;	
+	public int timeLeft;
+	public bool isHost;
     public InputField inputRoom;
-    public User user;
 
-    void SetupClient()
-    {
-        Debug.Log("Set up cliet");
+	private readonly string wsEndpoint = "ws://party-play.herokuapp.com/";
+
+	public GameSequence(User usr, InputField fld) {
+		user = usr;
+		inputRoom = fld;
+		SetupClient();
+	}
+
+    public void SetupClient() {
 
         // relay = IO.Socket("ws://party-play.herokuapp.com/");
         relay = IO.Socket(this.wsEndpoint);
-
-        Debug.Log(relay);
 
         relay.On(Socket.EVENT_CONNECT, () =>
         {
             Debug.Log("Connected to middleman");
         });
-
-	
-
-    }
-
-    void Awake()
-    {
-        user = new User();
-        SetupClient();
     }
 
     // host creates a room
-    public void createRoom()
-    {
-        Debug.Log("Create Room");
+    public void hostCreatesARoom() {
         isHost = true;
-		//StartCoroutine(CreateRoom());
-     relay.Emit("createRoom", user.asJson());
+		relay.Emit("createRoom", user.asJson());
     }
+
+    // public void fireEvent(string ev, Json payload){
+    // 	relay.Emit(ev, payload);
+    // }
 
     public void joinRoom()
     {
         user.roomKey = inputRoom.text;
         // Join specified room id
         relay.Emit("joinRoom", user.asJson());
-        Debug.Log(inputRoom.text);
-        // dataEntry.text = "Room joined";
     }
 
     public void drop()
     {
-		Debug.Log("Leave game");
         relay.Emit("leaveRoom", user.asJson());
     }
 
-    void Start()
+    public void startGame()
     {
-        // When anyone joins the room output room Id
+        user.roomKey = inputRoom.text;
+        relay.Emit("startGame", user.asJson());
+    }
+
+    public void broadcastData() {
+    	relay.Emit("broadcastData", user.asJson());
+    }
+
+    public void stopGame() {
+    	relay.Emit("stopGame", user.asJson());
+    }
+
+    public void setupListeners() {
+		// When anyone joins the room output room Id
         relay.On("joinedRoom", (data) =>
         {
             string str = data.ToString();
             RoomKey id = JsonUtility.FromJson<RoomKey>(str);
             user.roomKey = id.key;
-            Debug.Log(id.key);
-            Debug.Log(user.uid);
+            // Debug.Log(id.key);
+            // Debug.Log(user.uid);
         });
 
         // This is emmited from the channel of the room
@@ -142,36 +133,61 @@ public class GameDataRelay : MonoBehaviour
              Debug.Log(deadUser.uid);
 
          });
-
-    }
-
-    public void BtnOnClick()
-    {//button was click, send our id
-        relay.Emit(joinedRoom, "ID was clicked");
     }
 
 
-	IEnumerator CreateRoom() {
-		Debug.Log(user.uid);
-        // UnityWebRequest uwr = UnityWebRequest.Post(httpEndpoint + "createRoom", user.ToString());
-    var request = new UnityWebRequest(httpEndpoint + "createRoom", "POST");
+}
 
-    byte[] bodyRaw = new System.Text.UTF8Encoding().GetBytes(user.ToString());
-    request.uploadHandler = (UploadHandler) new UploadHandlerRaw(bodyRaw);
-    request.downloadHandler = (DownloadHandler) new DownloadHandlerBuffer();
-    request.SetRequestHeader("Content-Type", "application/json");
+// potentially derivable UI abstraction.
+//  need to use for main thread UI updates.
+// NOTE: for UI updates, and an example on the socket client,
+// see: https://github.com/floatinghotpot/socket.io-unity/blob/master/Demo/SocketIOScript.cs
+public class GameUI
+{
+}
 
-		// uwr.SetRequestHeader("Content-Type", "application/json");
+public class GameDataRelay : MonoBehaviour
+{
+	// private readonly string httpEndpoint = "https://party-play.herokuapp.com/";
+	// private readonly string wsEndpoint = "ws://party-play.herokuapp.com/";
+    public Text dataEntry;
+    public Text txtRoom;
+    public GameSequence seq;
+    public InputField inputRoom;
 
-    yield return request.SendWebRequest();
- 
-        if(request.isNetworkError || request.isHttpError) {
-            Debug.Log(request.error);
-        }
-        else {
-            // Show results as text
-            Debug.Log(request.downloadHandler.text);
-        }
+
+    void Awake()
+    {
+        User user = new User();
+        seq = new GameSequence(user, inputRoom);
     }
+
+
+    void Start()
+    {
+    	seq.setupListeners();
+    }
+
+    // ui update loop
+    void Update() {
+
+    }
+
+    public void createRoom() {
+    	seq.hostCreatesARoom();
+    }
+
+    public void leaveRoom() {
+    	seq.drop();
+    }
+
+    public void joinRoom() {
+    	seq.joinRoom();
+    }
+
+    public void endGame() {
+    	seq.stopGame();
+    }
+
 
 }
