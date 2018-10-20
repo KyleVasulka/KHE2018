@@ -1,5 +1,6 @@
 const Server = require('socket.io');
 const randomKey = require('../util/randomKey.js');
+const countDownInterval = require('../util/countDownTimer.js');
 
 
 const ON_EVENTS = {
@@ -11,7 +12,7 @@ const ON_EVENTS = {
 }
 
 const EMIT_EVENTS = {
-    joinRoom: 'joinRoom',
+    joinedRoom: 'joinedRoom',
     gameStarted: 'gameStarted',
     finalScores: 'finalScores',
     timeLeft: 'timeLeft',
@@ -19,26 +20,17 @@ const EMIT_EVENTS = {
 }
 
 
-function countDownInterval(seconds, body, end) {
-    let i = seconds;
-    const interval = setInterval(function () {
-        body(i);
-        if (--i === 0) {
-            clearInterval(interval);
-            end();
-        }
-    }, 1000);
-    return interval;
-}
+
 
 function setUpGameRoom(io, key) {
     const room = io.sockets.in(key);
+
 
     room.on(ON_EVENTS.startGame, function () {
 
         room.emit(EMIT_EVENTS.gameStarted);
 
-        countDownInterval(60, (secondsLeft) => {
+        countDownInterval.countDown(60, (secondsLeft) => {
             room.emit(EMIT_EVENTS.timeLeft, secondsLeft);
         }, () => {
 
@@ -57,9 +49,10 @@ function setUpGameRoom(io, key) {
 
             room.emit(EMIT_EVENTS.gameOver);
 
-            countDownInterval(5, (timeLeft) => {
+            countDownInterval.countDown(5, (timeLeft) => {
             }, () => {
                 room.emit(EMIT_EVENTS.finalScores, collectedScores);
+                emptyRoom(io, key);
             })
 
         })
@@ -69,13 +62,20 @@ function setUpGameRoom(io, key) {
 
     room.on(ON_EVENTS.gameQuit, function (payload) {
         console.log('game bad');
+        emptyRoom(io, key);
     })
+}
+
+function emptyRoom(io, key) {
+    io.sockets.clients(key).forEach(function (s) {
+        s.leave(key);
+    });
 }
 
 const setUpSocketIO = function (server) {
 
 
-    let io = Server(server);
+    let io = Server(server, { pingInterval: 500 });
 
     io.on('connect_error', function (err) {
         console.log('Error connecting to server');
