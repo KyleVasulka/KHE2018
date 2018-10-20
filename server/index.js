@@ -1,4 +1,4 @@
-const randomKey =  require('./util/randomKey.js');
+const randomKey = require('./util/randomKey.js');
 
 const Server = require('socket.io');
 const PORT = 8080;
@@ -10,6 +10,7 @@ const express = require('express');
 
 const app = express();
 const server = http.createServer(app);
+let io = Server(server);
 
 
 
@@ -18,11 +19,16 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
 
-app.get('/', function (req, res) {
-    res.send('Hello World 222 !' + randomKey.get());
-})
+const EVENTS = {
+    createRoom: 'createRoom',
+    roomJoined: 'roomJoined',
+    joinRoom: 'joinRoom',
+    waitingRoomTimer: 'waitingRoomTimer'
+}
 
-let io = Server(server);
+app.get('/', function (req, res) {
+    res.send('Hello Server');
+})
 
 
 io.on('connect_error', function (err) {
@@ -30,11 +36,33 @@ io.on('connect_error', function (err) {
 });
 
 io.on('connection', function (socket) {
-    socket.on('my other event', function (data) {
-        console.log(data);
+
+
+    socket.on(EVENTS.createRoom, function () {
+        const key = randomKey.get();
+        console.log('Room being created with key: ', key);
+
+        socket.join(key);
+        socket.emit(EVENTS.roomJoined, { key: key });
+
+        let i = 0;
+        setInterval(function () {
+            io.sockets.in(key).emit(EVENTS.waitingRoomTimer, i++);
+        }, 1000);
+
+
     });
+
+    socket.on(EVENTS.joinRoom, function (key) {
+        const trimedKey = key.trim();
+        console.log('Joining room with key: ', trimedKey);
+        socket.join(trimedKey);
+        socket.emit(EVENTS.roomJoined, { key: trimedKey });
+    });
+
     console.log('user connected')
 });
+
 
 server.listen(PORT, () => {
     console.log('Running server on port %s', PORT);
