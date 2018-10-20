@@ -61,7 +61,7 @@ function removeUserFromRoom(key, uid) {
 }
 
 function emitter(key) {
-    return rooms[key].emitter;
+    return rooms[key].emitter();
 }
 
 
@@ -74,7 +74,7 @@ function setupChannels(socket) {
         rooms[key] = {
             created: Date.now(),
             state: "CREATED",
-            emitter: io.sockets.in(key)
+            emitter: () => io.sockets.in(key)
         };
         userData.roomKey = key;
         joinLogic(socket, userData);
