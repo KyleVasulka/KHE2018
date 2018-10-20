@@ -18,6 +18,7 @@ public class User
     public bool isHost;
     public string name;
     public string roomKey;
+    public AnchorPayload achor;
 
     public User()
     {
@@ -27,7 +28,6 @@ public class User
         roomKey = "";
     }
 
-
     public string asJson()
     {
         return JsonUtility.ToJson(this);
@@ -35,12 +35,25 @@ public class User
 
 }
 
+public class AnchorPayload {
+	public XPAnchor physicalAnchor;
+	public int roomNumber;
+	public string ipAddress;
+
+	public string asJson() {
+		return JsonUtility.ToJson(this);
+	}
+}
+
+
+// TODO: timeLeft and payload for each emit event.
+// should update accordingly. the game sequence should always have a value.
 public class GameSequence {
 	public User user;
 	public string joinedRoom;
 	public Socket relay;	
-	public int timeLeft;
-	public bool isHost;
+	public int timeLeft = 60;
+	public bool isHost = false;
     public InputField inputRoom;
 
 	private readonly string wsEndpoint = "ws://party-play.herokuapp.com/";
@@ -68,10 +81,6 @@ public class GameSequence {
 		relay.Emit("createRoom", user.asJson());
     }
 
-    // public void fireEvent(string ev, Json payload){
-    // 	relay.Emit(ev, payload);
-    // }
-
     public void joinRoom()
     {
         user.roomKey = inputRoom.text;
@@ -83,6 +92,11 @@ public class GameSequence {
     {
         relay.Emit("leaveRoom", user.asJson());
     }
+
+    public void broadcastLocalization() {
+    	relay.Emit("broadcastLocalizationData", user.achor.asJson());
+    }
+
 
     public void startGame()
     {
@@ -189,5 +203,8 @@ public class GameDataRelay : MonoBehaviour
     	seq.stopGame();
     }
 
+    public void sendLocalizationData() {
+
+    }
 
 }
