@@ -2,20 +2,27 @@ const Server = require('socket.io');
 const randomKey = require('../util/randomKey.js');
 const countDownInterval = require('../util/countDownTimer.js');
 
-
 const rooms = {};
 const deadRooms = {};
+let io;
+let app;
+let globalScoreTracker = {};
 
 
 const ON_EVENTS = {
     createRoom: 'createRoom',
     joinRoom: 'joinRoom',
     gatheringScores: 'gatheringScores',
-    gameQuit: 'gameComplete',
-    readyToPlay: 'readyToPlay',
+    stopGame: 'stopGame',
+    startGame: 'startGame',
     setLocalizationData: 'recieveLocalizationData',
-    requestLocalizationData: 'requestLocalizationData',
-    receiveData: 'recieveData'
+    broadcastLocalizationData: 'broadcastLocalizationData',
+    receiveData: 'recieveData',
+    leaveRoom: 'leaveRoom',
+    broadcastData: 'broadcastData',
+    userReady: 'userReady',
+    requestLocalizationData: 'requestLocalizationData'
+
 }
 
 const EMIT_EVENTS = {
@@ -24,62 +31,146 @@ const EMIT_EVENTS = {
     finalScores: 'finalScores',
     timeLeft: 'timeLeft',
     gameOver: 'gameOver',
-    dispactchLocalizationData: 'dispactchLocalizationData',
+    broadcastLocalizationData: 'broadcastLocalizationData',
     newMemberJoined: 'newMemberJoined',
     memberDropped: 'memberDropped',
-    sendData: 'sendData'
+    broadcastData: 'broadcastData',
+    invalidKey: 'invalidKey',
+    usersStatusChange: 'usersStatusChange'
 }
 
 
-function setUpGameRoom(io, key) {
-    const room = io.sockets.in(key);
+function emptyRoom(key) {
+    io.sockets.clients(key).forEach((s) => {
+        console.log(s);
+        s.leave(key);
+    });
+}
 
-    rooms[key] = {
-        created: Date.now(),
-        state: "CREATED"
-    };
+function trackUsersPerRoom(key, user) {
+    rooms[key].users[user.uid] = user;
+}
 
-    room.on(ON_EVENTS.setLocalizationData, function (data) {
-        console.log("Localization Data: ", data);
-        rooms[key].localizationData = data;
-        room.emit(EMIT_EVENTS.dispactchLocalizationData, data);
+function removeUserFromRoom(key, uid) {
+    delete rooms[key].users[user.uid];
+}
+
+function emitter(key) {
+    return rooms[key].emitter();
+}
+
+
+function setupChannels(socket) {
+
+    socket.on(ON_EVENTS.createRoom, (data) => {
+        const userData = JSON.parse(data);
+        const key = randomKey.get();
+        console.log('Room being created with key: ', key);
+        rooms[key] = {
+            created: Date.now(),
+            state: "CREATED",
+            emitter: () => io.sockets.in(key)
+        };
+        userData.roomKey = key;
+        joinLogic(socket, userData);
+    })
+
+    socket.on(ON_EVENTS.joinRoom, (userDataStr) => {
+        const userData = JSON.parse(userDataStr);
+        joinLogic(socket, userData);
+    });
+    socket.on(ON_EVENTS.userReady, (userDataStr) => {
+        const userData = JSON.parse(userDataStr);
+        rooms[key].users[userData.uid].ready = true;
+        emitter(key).emit(EMIT_EVENTS.usersStatusChange, rooms[key].users);
     });
 
-    room.on(ON_EVENTS.receiveData, function (data) {
-        console.log("Recieved data: ", data);
-        rooms[key].data = data;
-        room.emit(EMIT_EVENTS.sendData, data);
+    
+    socket.on(ON_EVENTS.leaveRoom, (data) => {
+        const userData = JSON.parse(data);
+        const key = userData.roomKey;
+        console.log('Leave room', userData);
+        if (userData.isHost) {
+            emptyRoom(key);
+        } else {
+            emitter(key).emit(EMIT_EVENTS.memberDropped, userData);
+            removeUserFromRoom(key, userData.uid);
+            socket.leave(key);
+        }
+
+    })
+
+    socket.on(ON_EVENTS.stopGame, (data) => {
+        const userData = JSON.parse(data);
+        const key = userData.roomKey;
+
+        rooms[key].state = "GAME QUIT";
+
+        deadRooms[key] = {
+            ...rooms[key]
+        }
+
+        delete rooms[key];
+
+        console.log('Game Quit');
+        emptyRoom(key);
     });
 
-    room.on(ON_EVENTS.readyToPlay, function () {
+
+    socket.on(ON_EVENTS.broadcastLocalizationData, (dataStr) => {
+        const data = JSON.parse(dataStr);
+        const key = data.roomKey;
+        emitter(key).emit(EMIT_EVENTS.broadcastLocalizationData, data.achor);
+    });
+
+    socket.on(ON_EVENTS.requestLocalizationData, (dataStr) => {
+        const data = JSON.parse(dataStr);
+        const key = data.roomKey;
+        emitter(key).emit(EMIT_EVENTS.broadcastLocalizationData, rooms[key].localizationData);
+    });
+    
+
+    socket.on(ON_EVENTS.setLocalizationData, (dataStr) => {
+        const data = JSON.parse(dataStr);
+        const key = data.roomKey;
+        console.log("Localization User Data: ", data);
+        rooms[key].localizationData = data.achor;
+        emitter(key).emit(EMIT_EVENTS.broadcastLocalizationData, data.achor);
+    });
+
+    socket.on(ON_EVENTS.broadcastData, (dataStr) => {
+        const data = JSON.parse(dataStr);
+        const key = data.roomKey;
+        emitter(key).emit(EMIT_EVENTS.broadcastData, data);
+    });
+
+    socket.on(ON_EVENTS.gatheringScores, (dataStr) => {
+        const data = JSON.parse(dataStr);
+        const key = data.roomKey;
+        const uid = data.uid;
+        globalScoreTracker[key][uid] = data;
+    })
+
+    socket.on(ON_EVENTS.startGame, (dataStr) => {
+        const data = JSON.parse(dataStr);
+        const key = data.roomKey;
+
         rooms[key].state = "GAME STARTED";
 
-        room.emit(EMIT_EVENTS.gameStarted);
+        emitter(key).emit(EMIT_EVENTS.gameStarted);
 
         countDownInterval.countDown(60, (secondsLeft) => {
-            room.emit(EMIT_EVENTS.timeLeft, secondsLeft);
+            emitter(key).emit(EMIT_EVENTS.timeLeft, secondsLeft);
             rooms[key].timeLeft = secondsLeft;
 
         }, () => {
-
-            const collectedScores = [];
-
-            room.on(ON_EVENTS.gatheringScores, function (data) {
-                const score = data.score;
-                const userName = data.userName;
-                const uid = data.uid;
-                collectedScores.push({
-                    score: score,
-                    userName: userName,
-                    uid: uid
-                });
-            })
+            console.log('all done!')
 
             room.emit(EMIT_EVENTS.gameOver);
 
             countDownInterval.countDown(5, () => {
             }, () => {
-                room.emit(EMIT_EVENTS.finalScores, collectedScores);
+                room.emit(EMIT_EVENTS.finalScores, globalScoreTracker[key]);
                 emptyRoom(io, key);
                 rooms[key].state = "GAME ENDED";
 
@@ -96,67 +187,22 @@ function setUpGameRoom(io, key) {
 
     });
 
-    room.on(ON_EVENTS.gameQuit, function (payload) {
 
-        rooms[key].state = "GAME QUIT";
 
-        deadRooms[key] = {
-            ...rooms[key]
-        }
-
-        delete rooms[key];
-
-        console.log('Game Quit');
-        emptyRoom(io, key);
-    })
-}
-
-function emptyRoom(io, key) {
-    io.sockets.clients(key).forEach(function (s) {
-        s.leave(key);
-    });
-}
-
-function trackUsersPerRoom(key, user) {
-    const users = rooms[key].users;
-    if (users && users.length) {
-        users.push(user);
-    } else {
-        rooms[key].users = [user]
-    }
 
 }
 
 
-const setUpSocketIO = function (server) {
-    let io = Server(server, { pingInterval: 500 });
+const setUpSocketIO = (server, appParam) => {
+    app = appParam;
+    io = Server(server, { pingInterval: 500 });
 
-    io.on('connect_error', function (err) {
+    io.on('connect_error', (err) => {
         console.log('Error connecting to server');
     });
 
-    io.on('connection', function (socket) {
-
-        socket.on(ON_EVENTS.createRoom, function () {
-            const key = randomKey.get();
-            console.log('Room being created with key: ', key);
-            setUpGameRoom(io, key);
-            joinLogic(socket, key, {}, io);
-        });
-
-        socket.on(ON_EVENTS.joinRoom, function (key) {
-            const trimedKey = key.trim();
-            joinLogic(socket, trimedKey, {}, io);
-        });
-
-        socket.on(ON_EVENTS.requestLocalizationData, function (key) {
-            socket.emit(EMIT_EVENTS.dispactchLocalizationData, rooms[key].localizationData);
-        });
-
-
-
-
-
+    io.on('connection', (socket) => {
+        setupChannels(socket);
         console.log('user connected', socket.id);
     });
 
@@ -164,28 +210,39 @@ const setUpSocketIO = function (server) {
 
 }
 
-function joinLogic(socket, key, userData, io) {
-    console.log('Joining room with key: ', key);
-    socket.join(key);
+function joinLogic(socket, userData) {
+    const key = userData.roomKey;
 
-    const localizationData = rooms[key].localizationData;
-    const payload = { key: key };
-    if (localizationData) {
-        payload.localizationData = localizationData;
+    if (rooms.hasOwnProperty(key)) {
+        console.log('Joining room with key: ', key);
+        socket.join(key);
+
+        const localizationData = rooms[key].localizationData;
+        const payload = { key: key };
+        if (localizationData) {
+            payload.localizationData = localizationData;
+        }
+        emitter(key).emit(EMIT_EVENTS.joinedRoom, payload);
+
+        trackUsersPerRoom(key, userData);
+        emitter(key).emit(EMIT_EVENTS.newMemberJoined, userData);
+
+        socket.on('disconnect', () => {
+            emitter(key).emit(EMIT_EVENTS.memberDropped, userData);
+            removeUserFromRoom(key, userData)
+        });
+
+    } else {
+        socket.emit(EMIT_EVENTS.invalidKey, "Invalid room key");
     }
-    socket.emit(EMIT_EVENTS.joinedRoom, payload);
 
-    trackUsersPerRoom(key, userData);
-    io.sockets.in(key).emit(EMIT_EVENTS.newMemberJoined, userData);
-
-    socket.on('disconnect', () => {
-        io.sockets.in(key).emit(EMIT_EVENTS.memberDropped, userData);
-    });
 
 }
 
 module.exports = {
-    setup: setUpSocketIO,
+    setup: (server, appParam) => {
+        setUpSocketIO(server, appParam);
+    },
     activeRooms: () => rooms,
     deadRooms: () => deadRooms
 }
