@@ -21,7 +21,8 @@ const ON_EVENTS = {
     leaveRoom: 'leaveRoom',
     broadcastData: 'broadcastData',
     userReady: 'userReady',
-    requestLocalizationData: 'requestLocalizationData'
+    requestLocalizationData: 'requestLocalizationData',
+    userNameChange: 'userNameChange'
 
 }
 
@@ -36,7 +37,8 @@ const EMIT_EVENTS = {
     memberDropped: 'memberDropped',
     broadcastData: 'broadcastData',
     invalidKey: 'invalidKey',
-    usersStatusChange: 'usersStatusChange'
+    usersStatusChange: 'usersStatusChange',
+    userNameChange: 'userNameChange'
 }
 
 
@@ -88,6 +90,12 @@ function setupChannels(socket) {
         const userData = JSON.parse(userDataStr);
         rooms[key].users[userData.uid].ready = true;
         emitter(key).emit(EMIT_EVENTS.usersStatusChange, rooms[key].users);
+    });
+
+    socket.on(ON_EVENTS.userNameChange, (userDataStr) => {
+        const userData = JSON.parse(userDataStr);
+        rooms[key].users[userData.uid].name = userData.name;
+        emitter(key).emit(EMIT_EVENTS.userNameChange, userData);
     });
 
 
