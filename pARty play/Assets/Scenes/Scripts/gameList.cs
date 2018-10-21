@@ -37,6 +37,8 @@ public class gameList : MonoBehaviour
     public GameObject eventSystem;
     private GameDataRelay gameDataRelay;
 
+    public string roomKeyVal = "";
+
     void Awake()
     {
         eventSystem = GameObject.Find("EventSystem");
@@ -90,10 +92,35 @@ public class gameList : MonoBehaviour
         });
     }
 
+    public void startGame()
+    {
+        this.gameDataRelay.startGame(roomKeyVal);
+    }
+
+    public void gameStarted()
+    {
+    }
+
+    public void timeLeft(string time)
+    {
+    }
+
+    public void gameOver()
+    {
+    }
+
+    public void finalScores()
+    {
+    }
+
+
+
+
     public void roomKey(string key)
     {
         QueueEvent(() =>
         {
+            roomKeyVal = key;
             Debug.Log(key);
             // do something with this.
         });

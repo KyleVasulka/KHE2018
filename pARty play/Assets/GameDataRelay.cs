@@ -34,7 +34,7 @@ public class User
     {
         uid = System.Guid.NewGuid().ToString();
         isHost = false;
-        name = "Unset";
+        name = "Phil";//(new List<string> { "", "", "", "" }).OrderBy(x => Guid.NewGuid()).FirstOrDefault();
         roomKey = "";
         achor = new AnchorPayload();
         Debug.Log("User has been created" + uid);
@@ -168,6 +168,21 @@ public class GameSequence
         setLocalizationData();
     }
 
+    public void gatheringScores()
+    {
+        relay.Emit("gatheringScores", user.asJson());
+    }
+
+
+
+
+
+    public void startGame(string roomKey)
+    {
+        user.roomKey = roomKey;
+        relay.Emit("startGame", user.asJson());
+    }
+
     public AnchorPayload GroupPayload;
     public void setupListeners()
     {
@@ -216,6 +231,45 @@ public class GameSequence
 
 
         });
+
+
+
+
+        relay.On("gameStarted", () =>
+              {
+                  //fucking game is running
+                  this.gameList.gameStarted();
+              });
+
+        relay.On("timeLeft", (time) =>
+              {
+                  Debug.Log(time);
+                  this.gameList.timeLeft(time.ToString());
+              });
+
+        relay.On("gameOver", () =>
+               {
+                   Debug.Log("gameover");
+
+                   this.gatheringScores();
+                   this.gameList.gameOver();
+
+
+               });
+
+
+        relay.On("finalScores", (scores) =>
+ {
+
+     Debug.Log("finalScores");
+
+     this.gameList.finalScores();
+
+     Debug.Log(scores);
+ });
+
+
+
 
         // This is emmited from the channel of the room
         relay.On("newMemberJoined", (data) =>
@@ -326,6 +380,12 @@ public class GameDataRelay : MonoBehaviour
     public void createRoom()
     {
         seq.hostCreatesARoom();
+    }
+
+
+    public void startGame(string roomKey)
+    {
+        seq.startGame(roomKey);
     }
 
     public User getUser()
