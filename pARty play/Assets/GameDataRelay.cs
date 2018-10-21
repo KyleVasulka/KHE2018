@@ -266,7 +266,7 @@ public class GameSequence
 
      this.gameList.finalScores(scores);
 
-     Debug.Log(scores);
+     // Debug.Log(scores);
  });
 
 

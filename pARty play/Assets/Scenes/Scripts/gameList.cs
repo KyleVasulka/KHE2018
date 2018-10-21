@@ -18,6 +18,9 @@ public class gameList : MonoBehaviour
 
     private List<User> players = new List<User>();
 
+
+    public GameSceneCoordinator manager;
+
     // TODO: Change to User entity
     public string nickname;
 
@@ -101,6 +104,10 @@ public class gameList : MonoBehaviour
 
     public void gameStarted()
     {
+        QueueEvent(() =>
+       {
+           manager.StartGame();
+       });
     }
 
     public void timeLeft(string time)
@@ -109,12 +116,13 @@ public class gameList : MonoBehaviour
 
     public void gameOver()
     {
-        int score = 0;
-        this.gameDataRelay.gatherScores(score);
+        this.gameDataRelay.gatherScores(this.manager.requestScore());
     }
 
     public void finalScores(object scores)
     {
+        this.manager.EndGame();
+        
     }
 
 
