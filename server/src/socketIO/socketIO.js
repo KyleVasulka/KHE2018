@@ -175,7 +175,7 @@ function setupChannels(socket) {
 
         emitter(key).emit(EMIT_EVENTS.gameStarted);
 
-        countDownInterval.countDown(60, (secondsLeft) => {
+        countDownInterval.countDown(20, (secondsLeft) => {
             emitter(key).emit(EMIT_EVENTS.timeLeft, secondsLeft);
             rooms[key].timeLeft = secondsLeft;
 
