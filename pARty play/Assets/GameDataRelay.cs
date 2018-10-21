@@ -29,6 +29,7 @@ public class User
     public string roomKey;
     public AnchorPayload achor;
     public bool trigger_get_anchor = false;
+    public int score = 0;
 
     public User()
     {
@@ -168,8 +169,9 @@ public class GameSequence
         setLocalizationData();
     }
 
-    public void gatheringScores()
+    public void gatheringScores(int score)
     {
+        user.score = score;
         relay.Emit("gatheringScores", user.asJson());
     }
 
@@ -251,7 +253,6 @@ public class GameSequence
                {
                    Debug.Log("gameover");
 
-                   this.gatheringScores();
                    this.gameList.gameOver();
 
 
@@ -263,7 +264,7 @@ public class GameSequence
 
      Debug.Log("finalScores");
 
-     this.gameList.finalScores();
+     this.gameList.finalScores(scores);
 
      Debug.Log(scores);
  });
@@ -401,6 +402,11 @@ public class GameDataRelay : MonoBehaviour
     public void joinRoom(string room)
     {
         seq.joinRoom(room);
+    }
+
+    public void gatherScores(int score)
+    {
+        seq.gatheringScores(score);
     }
 
     public void endGame()

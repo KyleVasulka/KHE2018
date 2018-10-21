@@ -11,6 +11,8 @@ public class gameList : MonoBehaviour
     public GameObject canMain, canGamesList, canLobby, gameButtonPreFab, GameListContent, playerNamePreFab, PlayersListContent, readyToLobbyButton, nicknameInput;
     public string[] gameNames = { "Pumpkin Pick", "Quick Corners", "Spooky Stones" };
 
+    public Text roomKeyLabel;
+
     public int minGamesRequired = 1;
     public List<string> gamesSelected = new List<string>();
 
@@ -107,9 +109,11 @@ public class gameList : MonoBehaviour
 
     public void gameOver()
     {
+        int score = 0;
+        this.gameDataRelay.gatherScores(score);
     }
 
-    public void finalScores()
+    public void finalScores(object scores)
     {
     }
 
@@ -121,6 +125,7 @@ public class gameList : MonoBehaviour
         QueueEvent(() =>
         {
             roomKeyVal = key;
+            roomKeyLabel.text = key;
             Debug.Log(key);
             // do something with this.
         });
