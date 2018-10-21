@@ -1,7 +1,5 @@
 fileFormatVersion: 2
-guid: f66655b38428d40769e9e41ee237cbdc
-timeCreated: 1503346684
-licenseType: Free
+guid: f01d078e36909bf469a0d70449e87b2c
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
@@ -13,10 +11,13 @@ TrueTypeFontImporter:
   fontName: Roboto
   fontNames:
   - Roboto
-  fallbackFontReferences: []
+  fallbackFontReferences:
+  - {fileID: 12800000, guid: f66655b38428d40769e9e41ee237cbdc, type: 3}
   customCharacters: 
   fontRenderingMode: 0
   ascentCalculationMode: 1
+  useLegacyBoundsCalculation: 0
+  shouldRoundAdvanceValue: 1
   userData: 
   assetBundleName: 
   assetBundleVariant: 
