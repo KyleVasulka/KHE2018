@@ -27,6 +27,7 @@ public class User
     public string name;
     public string roomKey;
     public AnchorPayload achor;
+    public int score;
 
     public User()
     {
@@ -34,6 +35,7 @@ public class User
         isHost = false;
         name = "Unset";
         roomKey = "";
+        score = 0;
     }
 
     public string asJson()
@@ -140,11 +142,33 @@ public class GameSequence
         relay.Emit("setLocalizationData", user.asJson());
     }
 
-    public void setupListeners() {
+    public void sendScores()
+    {
+        relay.Emit("gatheringScores", user.asJson());
+    }
+
+    public void startGame()
+    {
+        if (user.isHost)
+        {
+            relay.Emit("startGame", user.asJson());
+        }
+        else
+        {
+            Debug.Log("Only Host is start the game");
+        }
+    }
+
+
+
+
+    public void setupListeners()
+    {
         // Invalid key specified..
-        relay.On("invalidKey", (data) => {
-        	Debug.Log(data);
-		});
+        relay.On("invalidKey", (data) =>
+        {
+            Debug.Log(data);
+        });
 
         // When anyone joins the room output room Id
         relay.On("joinedRoom", (data) =>
@@ -183,10 +207,10 @@ public class GameSequence
         relay.On("broadcastLocalizationData", (data) =>
                {
                    AnchorPayload anchorPayload = JsonUtility.FromJson<AnchorPayload>(data.ToString());
-                      if (user.achor == null)
-                      {
-                          user.achor = anchorPayload;
-                      }
+                   if (user.achor == null)
+                   {
+                       user.achor = anchorPayload;
+                   }
 
                });
 
@@ -202,6 +226,31 @@ public class GameSequence
                    }
                });
 
+
+        relay.On("gameStarted", () =>
+               {
+                   // Started The Game
+               });
+
+
+        relay.On("timeLeft", (data) =>
+            {
+                int secondsLeft = JsonUtility.FromJson<int>(data.ToString());
+            });
+
+        relay.On("gameOver", () =>
+            {
+                // Game ended
+                this.sendScores();
+            });
+
+
+        relay.On("finalScores", (dataStr) =>
+            {
+                Debug.Log(dataStr);
+                var data = JsonUtility.FromJson<any>(dataStr.ToString());
+                
+            });
 
     }
 

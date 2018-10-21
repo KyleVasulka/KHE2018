@@ -48,14 +48,14 @@ function emptyRoom(key) {
 }
 
 function trackUsersPerRoom(key, user) {
-    if(!rooms[key].users){
+    if (!rooms[key].users) {
         rooms[key].users = {}
     }
     rooms[key].users[user.uid] = user;
 }
 
 function removeUserFromRoom(key, uid) {
-    if(rooms[key].users){
+    if (rooms[key].users) {
         delete rooms[key].users[uid];
     }
 }
@@ -90,7 +90,7 @@ function setupChannels(socket) {
         emitter(key).emit(EMIT_EVENTS.usersStatusChange, rooms[key].users);
     });
 
-    
+
     socket.on(ON_EVENTS.leaveRoom, (data) => {
         const userData = JSON.parse(data);
         const key = userData.roomKey;
@@ -131,9 +131,12 @@ function setupChannels(socket) {
     socket.on(ON_EVENTS.requestLocalizationData, (dataStr) => {
         const data = JSON.parse(dataStr);
         const key = data.roomKey;
-        emitter(key).emit(EMIT_EVENTS.broadcastLocalizationData, rooms[key].localizationData);
+        const localizationData = rooms[key].localizationData;
+        if (localizationData) {
+            emitter(key).emit(EMIT_EVENTS.broadcastLocalizationData, localizationData);
+        }
     });
-    
+
 
     socket.on(ON_EVENTS.setLocalizationData, (dataStr) => {
         const data = JSON.parse(dataStr);
