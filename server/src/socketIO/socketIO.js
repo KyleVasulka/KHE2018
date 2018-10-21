@@ -15,7 +15,7 @@ const ON_EVENTS = {
     gatheringScores: 'gatheringScores',
     stopGame: 'stopGame',
     startGame: 'startGame',
-    setLocalizationData: 'recieveLocalizationData',
+    setLocalizationData: 'setLocalizationData',
     broadcastLocalizationData: 'broadcastLocalizationData',
     receiveData: 'recieveData',
     leaveRoom: 'leaveRoom',
