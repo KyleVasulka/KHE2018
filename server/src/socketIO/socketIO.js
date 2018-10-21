@@ -182,11 +182,11 @@ function setupChannels(socket) {
         }, () => {
             console.log('all done!')
 
-            room.emit(EMIT_EVENTS.gameOver);
+            emitter(key).emit(EMIT_EVENTS.gameOver);
 
             countDownInterval.countDown(5, () => {
             }, () => {
-                room.emit(EMIT_EVENTS.finalScores, globalScoreTracker[key]);
+                emitter(key).emit(EMIT_EVENTS.finalScores, globalScoreTracker[key]);
                 emptyRoom(io, key);
                 rooms[key].state = "GAME ENDED";
 
