@@ -161,9 +161,11 @@ function setupChannels(socket) {
     });
 
     socket.on(ON_EVENTS.gatheringScores, (dataStr) => {
+        console.log(dataStr);
         const data = JSON.parse(dataStr);
         const key = data.roomKey;
         const uid = data.uid;
+        globalScoreTracker[key] = {}
         globalScoreTracker[key][uid] = data;
     })
 
@@ -175,18 +177,18 @@ function setupChannels(socket) {
 
         emitter(key).emit(EMIT_EVENTS.gameStarted);
 
-        countDownInterval.countDown(60, (secondsLeft) => {
+        countDownInterval.countDown(20, (secondsLeft) => {
             emitter(key).emit(EMIT_EVENTS.timeLeft, secondsLeft);
             rooms[key].timeLeft = secondsLeft;
 
         }, () => {
             console.log('all done!')
 
-            room.emit(EMIT_EVENTS.gameOver);
+            emitter(key).emit(EMIT_EVENTS.gameOver);
 
             countDownInterval.countDown(5, () => {
             }, () => {
-                room.emit(EMIT_EVENTS.finalScores, globalScoreTracker[key]);
+                emitter(key).emit(EMIT_EVENTS.finalScores, globalScoreTracker[key]);
                 emptyRoom(io, key);
                 rooms[key].state = "GAME ENDED";
 
