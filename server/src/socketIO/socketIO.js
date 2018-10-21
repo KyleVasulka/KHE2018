@@ -161,6 +161,7 @@ function setupChannels(socket) {
     });
 
     socket.on(ON_EVENTS.gatheringScores, (dataStr) => {
+        console.log(dataStr);
         const data = JSON.parse(dataStr);
         const key = data.roomKey;
         const uid = data.uid;
