@@ -106,9 +106,10 @@ public class GameSequence
         relay.Emit("createRoom", user.asJson());
     }
 
-    public void joinRoom()
+    public void joinRoom(string room)
     {
-        user.roomKey = inputRoom.text;
+        Debug.Log("Joining room with :" + room);
+        user.roomKey = room;
         // Join specified room id
         relay.Emit("joinRoom", user.asJson());
     }
@@ -182,6 +183,10 @@ public class GameSequence
             if(user.achor.RoomKey == -1 && joinResult.localizationData != null)
             {
                 user.achor = joinResult.localizationData;
+                GroupPayload = joinResult.localizationData;
+                    user.trigger_get_anchor = true;
+                    // user.achor = anchorPayload;
+
             }
             if (user.isHost)
             {
@@ -311,9 +316,9 @@ public class GameDataRelay : MonoBehaviour
         seq.drop();
     }
 
-    public void joinRoom()
+    public void joinRoom(string room)
     {
-        seq.joinRoom();
+        seq.joinRoom(room);
     }
 
     public void endGame()

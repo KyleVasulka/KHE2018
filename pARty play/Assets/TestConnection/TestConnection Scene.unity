@@ -1526,7 +1526,6 @@ GameObject:
   - component: {fileID: 909898734}
   - component: {fileID: 909898733}
   - component: {fileID: 909898736}
-  - component: {fileID: 909898737}
   - component: {fileID: 909898738}
   m_Layer: 0
   m_Name: EventSystem
@@ -1594,18 +1593,6 @@ MonoBehaviour:
   dataEntry: {fileID: 1902807876}
   txtRoom: {fileID: 1242510084}
   inputRoom: {fileID: 0}
---- !u!114 &909898737
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 909898732}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 82ec3cb1312890f4eb1f5d4471c63fa3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  EventSystem: {fileID: 909898732}
 --- !u!114 &909898738
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1617,7 +1604,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2eadc218490a1154092c50cac2fda325, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  AnchControl: {fileID: 0}
+  AnchControl: {fileID: 1269151150}
+  gameDataRelay: {fileID: 909898736}
+  Roomtext: {fileID: 1902807876}
 --- !u!1 &944983545
 GameObject:
   m_ObjectHideFlags: 0
@@ -1769,7 +1758,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 909898737}
+      - m_Target: {fileID: 0}
         m_MethodName: onHosting
         m_Mode: 1
         m_Arguments:
@@ -3434,7 +3423,18 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1755771651}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 909898738}
+        m_MethodName: Join
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
     m_TypeName: UnityEngine.UI.Button+ButtonClickedEvent, UnityEngine.UI, Version=1.0.0.0,
       Culture=neutral, PublicKeyToken=null
 --- !u!114 &1755771651
