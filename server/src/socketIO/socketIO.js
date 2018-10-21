@@ -165,6 +165,7 @@ function setupChannels(socket) {
         const data = JSON.parse(dataStr);
         const key = data.roomKey;
         const uid = data.uid;
+        globalScoreTracker[key] = {}
         globalScoreTracker[key][uid] = data;
     })
 
